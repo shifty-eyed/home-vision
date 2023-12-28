@@ -1,0 +1,20 @@
+{
+  "global" : {
+    "frameWidth" : 1920,
+    "frameHeight" : 1080,
+    "fps" : 30,
+    "fileIntervalSeconds" : 10,
+    "videoFormat" : "XVID",
+    "videoQuality" : 40,
+    "videoOutPath" : "/home/rrr/video-out"
+  },
+  "captureDevices": [
+    {
+      "name" : "camera0",
+      "frameWidth" : 1920,
+      "frameHeight" : 1080,
+      "fps" : 30
+    }
+  ]
+
+}
