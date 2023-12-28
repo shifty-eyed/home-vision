@@ -18,7 +18,9 @@ public class Config {
 
     @Data
     public static class VideoSettings {
+
         private String name;
+        private int deviceId;
         private int frameWidth;
         private int frameHeight;
         private int fps;
