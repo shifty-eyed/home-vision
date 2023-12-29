@@ -10,7 +10,7 @@
   },
   "captureDevices": [
     {
-      "deviceId" : "0",
+      "deviceId" : 0,
       "name" : "front-camera",
       "frameWidth" : 1920,
       "frameHeight" : 1080
