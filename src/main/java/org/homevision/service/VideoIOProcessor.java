@@ -34,6 +34,7 @@ public class VideoIOProcessor implements Runnable {
 
     public VideoIOProcessor(Config.VideoSettings config) {
         this.config = config;
+        frame = new Mat();
 
         log = LoggerFactory.getLogger(VideoIOProcessor.class.getSimpleName() + "-" + config.getName());
 
@@ -76,7 +77,6 @@ public class VideoIOProcessor implements Runnable {
     }
 
     private boolean processFrame() {
-        frame = new Mat();
         if (!capture.read(frame)) {
             log.error("Failed to capture the frame");
             return false;
@@ -96,7 +96,9 @@ public class VideoIOProcessor implements Runnable {
         if (videoOut != null && videoOut.isOpened()) {
             videoOut.release();
         }
-        videoOut = new VideoWriter(fileName, Videoio.CAP_FFMPEG, VideoWriter.fourcc('X', 'V', 'I', 'D'), config.getFps(),
+        var format = config.getVideoFormat();
+        var codec = VideoWriter.fourcc(format.charAt(0), format.charAt(1), format.charAt(2), format.charAt(3));
+        videoOut = new VideoWriter(fileName, Videoio.CAP_FFMPEG, codec, config.getFps(),
                 new Size(config.getFrameWidth(), config.getFrameHeight()));
         videoOut.set(Videoio.VIDEOWRITER_PROP_QUALITY, config.getVideoQuality());
     }

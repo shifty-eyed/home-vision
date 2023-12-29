@@ -1,21 +1,15 @@
 package org.homevision.service;
 
-import org.opencv.core.Mat;
-import org.opencv.core.MatOfInt;
-import org.opencv.core.Size;
-import org.opencv.dnn.Dnn;
-import org.opencv.highgui.HighGui;
-import org.opencv.videoio.VideoCapture;
-import org.opencv.videoio.VideoWriter;
-import org.opencv.videoio.Videoio;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
+import javax.annotation.PreDestroy;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 @Component
 public class CaptureService {
@@ -29,17 +23,21 @@ public class CaptureService {
 
     @PostConstruct
     private void init() {
-        pool = Executors.newFixedThreadPool(config.getAll().size());
-        videoProcessors = new ArrayList<>(config.getAll().size());
+        var numberOfDevices = config.getAll().size();
+        pool = Executors.newFixedThreadPool(numberOfDevices);
+        videoProcessors = new ArrayList<>(numberOfDevices);
         for (var deviceConfig : config.getAll()) {
             var proc = new VideoIOProcessor(deviceConfig);
             videoProcessors.add(proc);
             pool.execute(proc);
         }
-
     }
 
-
-
+    @PreDestroy
+    private void shutdown() throws InterruptedException {
+        videoProcessors.stream().forEach(proc -> proc.setRunning(false));
+        pool.shutdown();
+        pool.awaitTermination(5, TimeUnit.SECONDS);
+    }
 
 }

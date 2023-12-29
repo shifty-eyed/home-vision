@@ -42,12 +42,10 @@ public class Config {
         return data.captureDevices;
     }
 
-
     @PostConstruct
-    private void load() throws IOException, IllegalAccessException {
+    private void load() throws IOException {
         String json = IOUtils.resourceToString("/conf/config.json", Charset.defaultCharset());
         data = (new Gson()).fromJson(json, ConfigDto.class);
-
 
         for (var deviceConfig : data.captureDevices) {
             var dst = new BeanWrapperImpl(deviceConfig);

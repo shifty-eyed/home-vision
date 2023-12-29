@@ -3,7 +3,7 @@
     "frameWidth" : 1920,
     "frameHeight" : 1080,
     "fps" : 30,
-    "fileIntervalSeconds" : 10,
+    "fileIntervalSeconds" : 300,
     "videoFormat" : "XVID",
     "videoQuality" : 40,
     "videoOutPath" : "/home/rrr/video-out"
@@ -11,10 +11,13 @@
   "captureDevices": [
     {
       "deviceId" : 0,
-      "name" : "front-camera",
-      "frameWidth" : 1920,
-      "frameHeight" : 1080
+      "name" : "front-camera"
+    },
+    {
+      "deviceId" : 2,
+      "name" : "camera2"
     }
+
   ]
 
 }
