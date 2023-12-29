@@ -1,71 +1,98 @@
 package org.homevision.service;
 
 import lombok.Getter;
+import lombok.Setter;
+import org.apache.commons.io.FileUtils;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfInt;
 import org.opencv.core.Size;
-import org.opencv.highgui.HighGui;
 import org.opencv.videoio.VideoCapture;
 import org.opencv.videoio.VideoWriter;
 import org.opencv.videoio.Videoio;
-import org.springframework.stereotype.Component;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.util.StopWatch;
 
-import javax.annotation.PostConstruct;
+import java.io.File;
+import java.nio.file.Files;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.logging.Logger;
 
-public class VideoIOProcessor {
+public class VideoIOProcessor implements Runnable {
 
-    private static final Logger log = Logger.getLogger(VideoIOProcessor.class.getSimpleName());
-
-    private VideoCapture capture;
+    private final Logger log;
+    private final VideoCapture capture;
     private VideoWriter videoOut;
-    private Config.VideoSettings config;
-    private StopWatch timer;
+    private final Config.VideoSettings config;
     private static final DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
     private static final DateFormat timeFormat = new SimpleDateFormat("HH_mm_ss");
 
+    @Getter
+    @Setter
+    private boolean running = true;
+
     public VideoIOProcessor(Config.VideoSettings config) {
         this.config = config;
-    }
 
-    @Getter
-    private Mat frame;
+        log = LoggerFactory.getLogger(VideoIOProcessor.class.getSimpleName() + "-" + config.getName());
 
-    public void start() {
         capture = new VideoCapture(config.getDeviceId(), Videoio.CAP_V4L2, new MatOfInt(
                 Videoio.CAP_PROP_FOURCC, VideoWriter.fourcc('M', 'J', 'P', 'G'),
                 Videoio.CAP_PROP_FRAME_WIDTH, config.getFrameWidth(), Videoio.CAP_PROP_FRAME_HEIGHT, config.getFrameHeight(),
                 Videoio.CAP_PROP_FPS, config.getFps()
         ));
-        videoOut = new VideoWriter(config.getVideoOutPath(), Videoio.CAP_FFMPEG, VideoWriter.fourcc('X', 'V', 'I', 'D'), config.getFps(),
-                new Size(config.getFrameWidth(), config.getFrameHeight()));
-        videoOut.set(Videoio.VIDEOWRITER_PROP_QUALITY, config.getVideoQuality());
-
-        for (int i = 0; i < 500; i++) {
-            frame = new Mat();
-            if (capture.read(frame)) {
-                videoOut.write(frame);
-            }
-        }
-
-        stop();
-
+        createVideoWriter();
     }
 
-    private String buildCurrentFileName() {
-        var currentDate = new Date();
-        return config.getVideoOutPath() + "/" + config.getName() + "/" + dateFormat.format(currentDate) + "/" + timeFormat.format(currentDate);
+    @Getter
+    private Mat frame;
+
+    public void run() {
+        long expectedProcessingTime = 1000 / config.getFps();
+        long videoFileStartTime = System.currentTimeMillis();
+        while (isRunning()) {
+            final long frameStartTime = System.currentTimeMillis();
+
+            if (!processFrame()) {
+                break;
+            }
+
+            final long processingTime = System.currentTimeMillis() - frameStartTime;
+            if (processingTime < expectedProcessingTime) {
+                try {
+                    Thread.sleep(expectedProcessingTime - processingTime);
+                } catch (InterruptedException e) {
+                   break;
+                }
+            }
+
+            if (System.currentTimeMillis() - videoFileStartTime > config.getFileIntervalSeconds() * 1000) {
+                createVideoWriter();
+                videoFileStartTime = System.currentTimeMillis();
+            }
+        }
+        shutdown();
+    }
+
+    private boolean processFrame() {
+        frame = new Mat();
+        if (!capture.read(frame)) {
+            log.error("Failed to capture the frame");
+            return false;
+        }
+        videoOut.write(frame);
+        return true;
     }
 
     private void createVideoWriter() {
-        var fileName = buildCurrentFileName();
-        log.info("Starting new file: "+fileName);
+        var currentDate = new Date();
+        var dirName = config.getVideoOutPath() + "/" + config.getName() + "/" + dateFormat.format(currentDate);
+        var fileName = dirName + "/" + timeFormat.format(currentDate) + ".avi";
+
+        new File(dirName).mkdirs();
+
+        log.info("Starting new file: " + fileName);
         if (videoOut != null && videoOut.isOpened()) {
             videoOut.release();
         }
@@ -74,12 +101,14 @@ public class VideoIOProcessor {
         videoOut.set(Videoio.VIDEOWRITER_PROP_QUALITY, config.getVideoQuality());
     }
 
-    public void stop() {
+    private void shutdown() {
         if (capture.isOpened()) {
             capture.release();
-            System.out.println("Camera closed");
+            log.info("Camera closed");
         }
-        videoOut.release();
+        if (videoOut != null && videoOut.isOpened()) {
+            videoOut.release();
+        }
     }
 
 
