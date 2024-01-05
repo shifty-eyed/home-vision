@@ -6,7 +6,11 @@
     "fileIntervalSeconds" : 300,
     "videoFormat" : "XVID",
     "videoQuality" : 40,
-    "videoOutPath" : "/home/rrr/video-out"
+    "videoOutPath" : "/home/rrr/video-out",
+    "videoFileExtension" : "mp4",
+    "limitOccupiedSpace" : "true",
+    "maxOccupiedSpaceGB" : 1,
+    "keepFreeDiskSpaceGB" : 1
   },
   "captureDevices": [
     {
@@ -15,7 +19,8 @@
     },
     {
       "deviceId" : 2,
-      "name" : "camera2"
+      "name" : "camera2",
+      "videoFormat" : "H264"
     }
 
   ]

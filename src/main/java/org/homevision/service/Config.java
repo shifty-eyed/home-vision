@@ -28,6 +28,10 @@ public class Config {
         private String videoFormat;
         private Integer videoQuality;
         private String videoOutPath;
+        private String videoFileExtension;
+        private boolean limitOccupiedSpace;
+        private Long maxOccupiedSpaceGB;
+        private Long keepFreeDiskSpaceGB;
     }
 
     @Data
@@ -40,6 +44,10 @@ public class Config {
 
     public List<VideoSettings> getAll() {
         return data.captureDevices;
+    }
+
+    public VideoSettings getGlobal() {
+        return data.global;
     }
 
     @PostConstruct
