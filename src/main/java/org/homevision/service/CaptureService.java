@@ -1,7 +1,7 @@
 package org.homevision.service;
 
-import org.apache.commons.io.FileSystemUtils;
 import org.apache.commons.io.FileUtils;
+import org.opencv.highgui.HighGui;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,7 +30,7 @@ public class CaptureService {
 	@Autowired
 	private Config config;
 
-	private List<VideoIOProcessor> videoProcessors;
+	private List<VideoProcessor> videoProcessors;
 
 	@PostConstruct
 	private void init() {
@@ -38,7 +38,7 @@ public class CaptureService {
 		pool = Executors.newFixedThreadPool(numberOfDevices);
 		videoProcessors = new ArrayList<>(numberOfDevices);
 		for (var deviceConfig : config.getAll()) {
-			var proc = new VideoIOProcessor(deviceConfig);
+			var proc = new VideoProcessor(deviceConfig);
 			videoProcessors.add(proc);
 			pool.execute(proc);
 		}
@@ -50,24 +50,29 @@ public class CaptureService {
 
 		var oversize = getBytesToFreeUp(storageDir);
 		if (oversize > 0) {
-			log.info("Oversize = " + oversize + ". Deleting older files.");
+			log.info("Oversize = " + FileUtils.byteCountToDisplaySize(oversize) + ". Deleting older files.");
 			var files = FileUtils.listFiles(storageDir, null, true)
 				.stream()
 				.sorted(Comparator.comparingLong(File::lastModified))
 				.toList();
 			for (var file : files) {
-				if (file.isFile() && oversize > 0) {
-					log.info("Deleting: " + file.getAbsolutePath() + ", size: " + file.length());
+				if (file.isFile()) {
+					log.info("Deleting: " + file.getAbsolutePath() + ", size: " + FileUtils.byteCountToDisplaySize(file.length()));
 					oversize -= file.length();
 					file.delete();
-				} else {
-					var contents = file.list();
-					if (contents == null || contents.length == 0) {
-						log.info("Deleting empty directory: " + file.getAbsolutePath());
-						file.delete();
-					}
 				}
+				if (oversize < 0) {
+					break;
+				}
+
 			}
+			files.stream().filter(File::isDirectory).forEach(dir -> {
+				var contents = dir.list();
+				if (contents == null || contents.length == 0) {
+					log.info("Deleting empty directory: " + dir.getAbsolutePath());
+					dir.delete();
+				}
+			});
 		}
 	}
 
@@ -79,13 +84,14 @@ public class CaptureService {
 
 		var diskFreeTarget = conf.getKeepFreeDiskSpaceGB() * FileUtils.ONE_GB;
 		var diskFreeActual = Files.getFileStore(storageDir.toPath()).getUsableSpace();
-		var oversizeOccupiedFreeSpace = Math.max(diskFreeActual - diskFreeTarget, 0);
+		var oversizeOccupiedFreeSpace = Math.max(diskFreeTarget - diskFreeActual, 0);
 
 		return Math.max(oversizeOccupied, oversizeOccupiedFreeSpace);
 	}
 
 	@PreDestroy
 	private void shutdown() throws InterruptedException {
+		HighGui.destroyAllWindows();
 		videoProcessors.stream().forEach(proc -> proc.setRunning(false));
 		pool.shutdown();
 		pool.awaitTermination(5, TimeUnit.SECONDS);

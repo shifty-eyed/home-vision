@@ -3,24 +3,27 @@
     "frameWidth" : 1920,
     "frameHeight" : 1080,
     "fps" : 30,
-    "fileIntervalSeconds" : 300,
-    "videoFormat" : "XVID",
-    "videoQuality" : 40,
+    "fileIntervalSeconds" : 60,
+    "videoFormat" : "avc1",
+    "videoQuality" : 3,
     "videoOutPath" : "/home/rrr/video-out",
     "videoFileExtension" : "mp4",
     "limitOccupiedSpace" : "true",
     "maxOccupiedSpaceGB" : 1,
-    "keepFreeDiskSpaceGB" : 1
+    "keepFreeDiskSpaceGB" : 100,
+    "exposure" : {
+      "autoCorrect" : "true",
+      "minExposure" : 10,
+      "maxExposure" : 350,
+      "lowerThreshold" : 100,
+      "upperThreshold" : 160,
+      "correctionStep" : 2
+    }
   },
   "captureDevices": [
     {
-      "deviceId" : 0,
-      "name" : "front-camera"
-    },
-    {
       "deviceId" : 2,
-      "name" : "camera2",
-      "videoFormat" : "H264"
+      "name" : "cam2"
     }
 
   ]

@@ -17,8 +17,13 @@ import java.util.List;
 public class Config {
 
     @Data
-    public static class VideoSettings {
+    public static class ConfigDto {
+        private VideoSettings global;
+        private List<VideoSettings> captureDevices;
+    }
 
+    @Data
+    public static class VideoSettings {
         private String name;
         private Integer deviceId;
         private Integer frameWidth;
@@ -32,13 +37,19 @@ public class Config {
         private boolean limitOccupiedSpace;
         private Long maxOccupiedSpaceGB;
         private Long keepFreeDiskSpaceGB;
+        private ExposureControl exposure;
     }
 
     @Data
-    public static class ConfigDto {
-        private VideoSettings global;
-        private List<VideoSettings> captureDevices;
+    public static class ExposureControl {
+        private boolean autoCorrect;
+        private Integer minExposure;
+        private Integer maxExposure;
+        private Integer lowerThreshold;
+        private Integer upperThreshold;
+        private Integer correctionStep;
     }
+
 
     private ConfigDto data;
 
