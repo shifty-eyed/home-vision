@@ -4,6 +4,7 @@ import lombok.Getter;
 import lombok.Setter;
 import org.opencv.core.*;
 import org.opencv.highgui.HighGui;
+import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
 import org.opencv.videoio.VideoCapture;
 import org.opencv.videoio.VideoWriter;
@@ -29,15 +30,18 @@ public class VideoProcessor implements Runnable {
 
     private AtomicLong frameProcessingTime = new AtomicLong();
 
+    private AtomicInteger actualExposure = new AtomicInteger();
+
     @Getter
     @Setter
     private boolean running = true;
 
-    @Getter
     private Mat frame;
 
     private Mat frameGrayscale;
     private Mat frameAnnotated;
+
+    private MatOfByte frameBuffer = new MatOfByte();
 
 
     public VideoProcessor(Config.VideoSettings config) {
@@ -85,20 +89,22 @@ public class VideoProcessor implements Runnable {
     }
 
     private boolean processFrame() {
-        if (!capture.read(frame)) {
-            log.error("Failed to capture the frame");
-            return false;
+        synchronized (frame) {
+            if (!capture.read(frame)) {
+                log.error("Failed to capture the frame");
+                return false;
+            }
         }
 
         var exp = capture.get(Videoio.CAP_PROP_EXPOSURE);
-        var ap = capture.get(Videoio.CAP_PROP_AUTO_EXPOSURE);
-        double averageIntensity = correctExposure(exp);
-        frame.copyTo(frameAnnotated);
 
+        actualExposure.set((int)correctExposure(exp));
+
+        /*frame.copyTo(frameAnnotated);
         var s = String.format("Exp: %.2f, Ap: %.2f, avgIntensity: %.2f, fps: %.2f", exp, ap, averageIntensity, getActualFPS());
         Imgproc.putText(frameAnnotated, s, new Point(20, 50), 1, 2.0, new Scalar(255, 255, 0));
         HighGui.imshow(config.getName(), frameAnnotated);
-        HighGui.waitKey(1);
+        HighGui.waitKey(1);*/
         videoOut.write(frame);
         return true;
     }
@@ -141,6 +147,9 @@ public class VideoProcessor implements Runnable {
 
     private void shutdown() {
         frame.release();
+        frameBuffer.release();
+        frameAnnotated.release();
+        frameGrayscale.release();
         if (capture.isOpened()) {
             capture.release();
             log.info("Camera closed");
@@ -156,6 +165,18 @@ public class VideoProcessor implements Runnable {
 
     public double getActualFPS() {
         return 1000.0 / getFrameProcessingTime();
+    }
+
+    public int getActualExposure() {
+        return actualExposure.get();
+    }
+
+    public byte[] getCurrentFrame(int w, int h, int quality) {
+        synchronized (frame) {
+            Imgproc.resize(frame, frameAnnotated, new Size(w, h));
+            Imgcodecs.imencode(".jpg", frameAnnotated, frameBuffer, new MatOfInt(Imgcodecs.IMWRITE_JPEG_QUALITY, quality));
+            return frameBuffer.toArray();
+        }
     }
 
 

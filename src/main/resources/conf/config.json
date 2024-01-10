@@ -22,7 +22,7 @@
   },
   "captureDevices": [
     {
-      "deviceId" : 2,
+      "deviceId" : 0,
       "name" : "cam2"
     }
 

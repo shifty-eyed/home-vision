@@ -62,7 +62,7 @@ public class Config {
     }
 
     @PostConstruct
-    private void load() throws IOException {
+    public void load() throws IOException {
         String json = IOUtils.resourceToString("/conf/config.json", Charset.defaultCharset());
         data = (new Gson()).fromJson(json, ConfigDto.class);
 

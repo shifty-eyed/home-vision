@@ -1,5 +1,6 @@
 package org.homevision.service;
 
+import lombok.Getter;
 import org.apache.commons.io.FileUtils;
 import org.opencv.highgui.HighGui;
 import org.slf4j.Logger;
@@ -21,15 +22,16 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 @Component
-public class CaptureService {
+public class VideoService {
 
-	private static final Logger log = LoggerFactory.getLogger(CaptureService.class.getSimpleName());
+	private static final Logger log = LoggerFactory.getLogger(VideoService.class.getSimpleName());
 
 	private ExecutorService pool;
 
 	@Autowired
 	private Config config;
 
+	@Getter
 	private List<VideoProcessor> videoProcessors;
 
 	@PostConstruct
