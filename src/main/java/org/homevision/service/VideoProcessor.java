@@ -31,6 +31,7 @@ public class VideoProcessor implements Runnable {
     private AtomicLong frameProcessingTime = new AtomicLong();
 
     private AtomicInteger actualExposure = new AtomicInteger();
+    private AtomicInteger avgIntensity = new AtomicInteger();
 
     @Getter
     @Setter
@@ -96,20 +97,15 @@ public class VideoProcessor implements Runnable {
             }
         }
 
-        var exp = capture.get(Videoio.CAP_PROP_EXPOSURE);
+        actualExposure.set((int)capture.get(Videoio.CAP_PROP_EXPOSURE));
 
-        actualExposure.set((int)correctExposure(exp));
+        avgIntensity.set(correctExposure(actualExposure.get()));
 
-        /*frame.copyTo(frameAnnotated);
-        var s = String.format("Exp: %.2f, Ap: %.2f, avgIntensity: %.2f, fps: %.2f", exp, ap, averageIntensity, getActualFPS());
-        Imgproc.putText(frameAnnotated, s, new Point(20, 50), 1, 2.0, new Scalar(255, 255, 0));
-        HighGui.imshow(config.getName(), frameAnnotated);
-        HighGui.waitKey(1);*/
         videoOut.write(frame);
         return true;
     }
 
-    private double correctExposure(double currentExposure) {
+    private int correctExposure(int currentExposure) {
         final var exp = config.getExposure();
         Imgproc.cvtColor(frame, frameGrayscale, Imgproc.COLOR_BGR2GRAY);
         double averageIntensity = Core.mean(frameGrayscale).val[0];
@@ -122,7 +118,7 @@ public class VideoProcessor implements Runnable {
                 capture.set(Videoio.CAP_PROP_EXPOSURE, currentExposure + exp.getCorrectionStep());
             }
         }
-        return averageIntensity;
+        return (int)averageIntensity;
     }
 
     private void createVideoWriter() {
@@ -138,11 +134,15 @@ public class VideoProcessor implements Runnable {
         }
         var format = config.getVideoFormat();
         var codec = VideoWriter.fourcc(format.charAt(0), format.charAt(1), format.charAt(2), format.charAt(3));
-        videoOut = new VideoWriter(fileName, Videoio.CAP_FFMPEG, codec, config.getFps(),
-                new Size(config.getFrameWidth(), config.getFrameHeight()));
-        videoOut.set(Videoio.VIDEOWRITER_PROP_QUALITY, config.getVideoQuality());
-        videoOut.set(Videoio.VIDEOWRITER_PROP_HW_ACCELERATION, Videoio.VIDEO_ACCELERATION_VAAPI);
-        videoOut.set(Videoio.VIDEOWRITER_PROP_HW_ACCELERATION_USE_OPENCL, 1);
+        var args = new MatOfInt(
+            Videoio.VIDEOWRITER_PROP_QUALITY, config.getVideoQuality()
+            //Videoio.VIDEOWRITER_PROP_HW_ACCELERATION, Videoio.VIDEO_ACCELERATION_ANY,
+            //Videoio.VIDEOWRITER_PROP_HW_ACCELERATION_USE_OPENCL, 1
+
+        );
+        videoOut = new VideoWriter(fileName, Videoio.CAP_ANY, codec, config.getFps(),
+                new Size(config.getFrameWidth(), config.getFrameHeight())/*, args*/);
+        //log.info("Video backend: " + videoOut.getBackendName());
     }
 
     private void shutdown() {
@@ -167,13 +167,11 @@ public class VideoProcessor implements Runnable {
         return 1000.0 / getFrameProcessingTime();
     }
 
-    public int getActualExposure() {
-        return actualExposure.get();
-    }
-
     public byte[] getCurrentFrame(int w, int h, int quality) {
         synchronized (frame) {
             Imgproc.resize(frame, frameAnnotated, new Size(w, h));
+            var s = String.format("exp: %d, avgIntensity: %d, fps: %.2f", actualExposure.get(), avgIntensity.get(), getActualFPS());
+            Imgproc.putText(frameAnnotated, s, new Point(20, 50), 1, 2.0, new Scalar(255, 255, 0));
             Imgcodecs.imencode(".jpg", frameAnnotated, frameBuffer, new MatOfInt(Imgcodecs.IMWRITE_JPEG_QUALITY, quality));
             return frameBuffer.toArray();
         }

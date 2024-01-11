@@ -5,7 +5,7 @@
     "fps" : 30,
     "fileIntervalSeconds" : 60,
     "videoFormat" : "avc1",
-    "videoQuality" : 3,
+    "videoQuality" : 1,
     "videoOutPath" : "/home/rrr/video-out",
     "videoFileExtension" : "mp4",
     "limitOccupiedSpace" : "true",

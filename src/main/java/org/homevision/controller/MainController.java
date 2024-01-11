@@ -13,6 +13,7 @@ import java.io.IOException;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.List;
 
 @RestController
 @RequestMapping("/homevision")
@@ -25,6 +26,11 @@ public class MainController {
 	private VideoService videoService;
 
 	private static final DateFormat dateTimeFormat = new SimpleDateFormat("yyyy-MM-dd__HH_mm_ss");
+
+	@GetMapping(value = "/config", produces = MediaType.APPLICATION_JSON_VALUE)
+	public Config.VideoSettings[] getConfig() {
+		return config.getAll().toArray(new Config.VideoSettings[0]);
+	}
 
 	@GetMapping(value = "/cam/{cameraIndex}/frame", produces = MediaType.IMAGE_JPEG_VALUE)
 	public ResponseEntity<byte[]> getFrame(@PathVariable int cameraIndex, @RequestParam(defaultValue = "1280") int w,
