@@ -75,3 +75,38 @@ function updateQualityLabel(value) {
     document.getElementById('qualityValue').textContent = value;
 }
 
+function toggleJsonEditor() {
+  const jsonEditorContainer = document.getElementById('jsonEditorContainer');
+  const editConfigButton = document.getElementById('editConfigButton');
+
+  if (jsonEditorContainer.style.display === 'none') {
+    jsonEditorContainer.style.display = 'block';
+
+    // Load JSON content from an endpoint (replace 'your-endpoint' with the actual URL)
+    fetch('homevision/config/edit')
+      .then(response => response.json())
+      .then(data => {
+        jsonEditor.setValue(JSON.stringify(data, null, 2));
+      });
+
+  } else {
+    jsonEditorContainer.style.display = 'none';
+  }
+}
+
+function saveJson() {
+  const editedJson = jsonEditor.getValue();
+  fetch('homevision/config/edit', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'text/plain',
+      },
+      body: editedJson,
+    })
+      .then(data => {
+        console.log('Successfully saved:', data);
+        toggleJsonEditor();
+      });
+
+}
+

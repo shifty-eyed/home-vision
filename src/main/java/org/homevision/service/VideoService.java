@@ -1,6 +1,7 @@
 package org.homevision.service;
 
 import lombok.Getter;
+import lombok.Setter;
 import org.apache.commons.io.FileUtils;
 import org.opencv.highgui.HighGui;
 import org.slf4j.Logger;
@@ -34,6 +35,9 @@ public class VideoService {
 	@Getter
 	private List<VideoProcessor> videoProcessors;
 
+	@Getter
+	private boolean running = false;
+
 	@PostConstruct
 	private void init() {
 		var numberOfDevices = config.getAll().size();
@@ -44,6 +48,13 @@ public class VideoService {
 			videoProcessors.add(proc);
 			pool.execute(proc);
 		}
+		running = true;
+	}
+
+	public void restart() throws InterruptedException {
+		log.info("Restarting video threads.");
+		shutdown();
+		init();
 	}
 
 	@Scheduled(fixedRate = 60000)
@@ -93,7 +104,7 @@ public class VideoService {
 
 	@PreDestroy
 	private void shutdown() throws InterruptedException {
-		HighGui.destroyAllWindows();
+		running = false;
 		videoProcessors.stream().forEach(proc -> proc.setRunning(false));
 		pool.shutdown();
 		pool.awaitTermination(5, TimeUnit.SECONDS);

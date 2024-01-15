@@ -2,19 +2,25 @@ package org.homevision.service;
 
 import com.google.gson.Gson;
 import lombok.Data;
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.BeanWrapperImpl;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
+import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
-import java.nio.charset.Charset;
 import java.util.Arrays;
 import java.util.List;
 
 @Component
 public class Config {
+
+    private static final String CONFIG_FILE = "conf/config.json";
+
+    private Gson gson = new Gson();
 
     @Data
     public static class ConfigDto {
@@ -62,17 +68,32 @@ public class Config {
     }
 
     @PostConstruct
-    public void load() throws IOException {
-        String json = IOUtils.resourceToString("/conf/config.json", Charset.defaultCharset());
-        data = (new Gson()).fromJson(json, ConfigDto.class);
+    public void loadFromFile() throws IOException {
+        String json = loadText();
+        data = init(json);
+    }
 
-        for (var deviceConfig : data.captureDevices) {
+    private ConfigDto init(String json) {
+        var config = gson.fromJson(json, ConfigDto.class);
+        for (var deviceConfig : config.captureDevices) {
             var dst = new BeanWrapperImpl(deviceConfig);
             var definedProps = Arrays.stream(dst.getPropertyDescriptors())
-                    .map(pd -> pd.getName())
-                    .filter(name -> dst.getPropertyValue(name) != null).toArray(String[]::new);
-            BeanUtils.copyProperties(data.global, deviceConfig, definedProps);
+                .map(pd -> pd.getName())
+                .filter(name -> dst.getPropertyValue(name) != null).toArray(String[]::new);
+            BeanUtils.copyProperties(config.global, deviceConfig, definedProps);
         }
+        return config;
     }
+
+    public String loadText() throws IOException {
+        return IOUtils.toString(new FileReader(CONFIG_FILE));
+    }
+
+    public void update(String json) throws IOException {
+        data = init(json);
+        FileUtils.write(new File(CONFIG_FILE), json, "UTF-8");
+    }
+
+
 
 }

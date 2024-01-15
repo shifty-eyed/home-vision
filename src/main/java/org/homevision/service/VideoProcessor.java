@@ -106,6 +106,9 @@ public class VideoProcessor implements Runnable {
     }
 
     private int correctExposure(int currentExposure) {
+        if (!isRunning()) {
+            return 0;
+        }
         final var exp = config.getExposure();
         Imgproc.cvtColor(frame, frameGrayscale, Imgproc.COLOR_BGR2GRAY);
         double averageIntensity = Core.mean(frameGrayscale).val[0];
@@ -135,13 +138,18 @@ public class VideoProcessor implements Runnable {
         var format = config.getVideoFormat();
         var codec = VideoWriter.fourcc(format.charAt(0), format.charAt(1), format.charAt(2), format.charAt(3));
         var args = new MatOfInt(
-            Videoio.VIDEOWRITER_PROP_QUALITY, config.getVideoQuality()
-            //Videoio.VIDEOWRITER_PROP_HW_ACCELERATION, Videoio.VIDEO_ACCELERATION_ANY,
+            //Videoio.VIDEOWRITER_PROP_QUALITY, config.getVideoQuality()
+            //Videoio.VIDEOWRITER_PROP_FRAMEBYTES, 500
+            //Videoio.VIDEOWRITER_PROP_HW_ACCELERATION, Videoio.VIDEO_ACCELERATION_VAAPI
             //Videoio.VIDEOWRITER_PROP_HW_ACCELERATION_USE_OPENCL, 1
 
         );
-        videoOut = new VideoWriter(fileName, Videoio.CAP_ANY, codec, config.getFps(),
-                new Size(config.getFrameWidth(), config.getFrameHeight())/*, args*/);
+        videoOut = new VideoWriter(fileName, Videoio.CAP_FFMPEG, codec, config.getFps(),
+                new Size(config.getFrameWidth(), config.getFrameHeight()), args);
+
+        log.info("set quality: " + videoOut.set(Videoio.VIDEOWRITER_PROP_QUALITY, config.getVideoQuality()));
+        log.info("set frame bytes: " + videoOut.set(Videoio.VIDEOWRITER_PROP_FRAMEBYTES, 500));
+
         //log.info("Video backend: " + videoOut.getBackendName());
     }
 
@@ -168,6 +176,9 @@ public class VideoProcessor implements Runnable {
     }
 
     public byte[] getCurrentFrame(int w, int h, int quality) {
+        if (!isRunning()) {
+            return null;
+        }
         synchronized (frame) {
             Imgproc.resize(frame, frameAnnotated, new Size(w, h));
             var s = String.format("exp: %d, avgIntensity: %d, fps: %.2f", actualExposure.get(), avgIntensity.get(), getActualFPS());

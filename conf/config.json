@@ -1,0 +1,37 @@
+{
+  "global": {
+    "frameWidth": 1280,
+    "frameHeight": 720,
+    "fps": 30,
+    "fileIntervalSeconds": 60,
+    "videoFormat": "avc1",
+    "videoQuality": 10,
+    "videoOutPath": "/home/rrr/video-out",
+    "videoFileExtension": "avi",
+    "limitOccupiedSpace": "true",
+    "maxOccupiedSpaceGB": 1,
+    "keepFreeDiskSpaceGB": 100,
+    "exposure": {
+      "autoCorrect": "true",
+      "minExposure": 10,
+      "maxExposure": 350,
+      "lowerThreshold": 100,
+      "upperThreshold": 160,
+      "correctionStep": 2
+    }
+  },
+  "captureDevices": [
+    {
+      "deviceId": 0,
+      "name": "cam0"
+    },
+	{
+      "deviceId": 2,
+      "name": "cam2"
+    },
+	{
+      "deviceId": 4,
+      "name": "cam4"
+    }
+  ]
+}

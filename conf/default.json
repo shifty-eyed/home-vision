@@ -1,13 +1,13 @@
 {
   "global" : {
-    "frameWidth" : 1920,
-    "frameHeight" : 1080,
+    "frameWidth" : 1280,
+    "frameHeight" : 720,
     "fps" : 30,
     "fileIntervalSeconds" : 60,
     "videoFormat" : "avc1",
-    "videoQuality" : 1,
+    "videoQuality" : 10,
     "videoOutPath" : "/home/rrr/video-out",
-    "videoFileExtension" : "mp4",
+    "videoFileExtension" : "avi",
     "limitOccupiedSpace" : "true",
     "maxOccupiedSpaceGB" : 1,
     "keepFreeDiskSpaceGB" : 100,
