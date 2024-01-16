@@ -147,10 +147,9 @@ public class VideoProcessor implements Runnable {
         videoOut = new VideoWriter(fileName, Videoio.CAP_FFMPEG, codec, config.getFps(),
                 new Size(config.getFrameWidth(), config.getFrameHeight()), args);
 
-        log.info("set quality: " + videoOut.set(Videoio.VIDEOWRITER_PROP_QUALITY, config.getVideoQuality()));
-        log.info("set frame bytes: " + videoOut.set(Videoio.VIDEOWRITER_PROP_FRAMEBYTES, 500));
-
-        //log.info("Video backend: " + videoOut.getBackendName());
+        try {
+            log.info("Video backend: " + videoOut.getBackendName());
+        } catch (Exception e) {}
     }
 
     private void shutdown() {
@@ -177,12 +176,12 @@ public class VideoProcessor implements Runnable {
 
     public byte[] getCurrentFrame(int w, int h, int quality) {
         if (!isRunning()) {
-            return null;
+            return new byte[0];
         }
         synchronized (frame) {
             Imgproc.resize(frame, frameAnnotated, new Size(w, h));
-            var s = String.format("exp: %d, avgIntensity: %d, fps: %.2f", actualExposure.get(), avgIntensity.get(), getActualFPS());
-            Imgproc.putText(frameAnnotated, s, new Point(20, 50), 1, 2.0, new Scalar(255, 255, 0));
+            var s = String.format("exp: %d, avgi: %d, fps: %.2f", actualExposure.get(), avgIntensity.get(), getActualFPS());
+            Imgproc.putText(frameAnnotated, s, new Point(20, 50), 0, 1.0, new Scalar(255, 255, 0));
             Imgcodecs.imencode(".jpg", frameAnnotated, frameBuffer, new MatOfInt(Imgcodecs.IMWRITE_JPEG_QUALITY, quality));
             return frameBuffer.toArray();
         }

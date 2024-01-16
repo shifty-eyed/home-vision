@@ -18,6 +18,8 @@ import java.util.List;
 @Component
 public class Config {
 
+    //v4l2-ctl --list-devices
+
     private static final String CONFIG_FILE = "conf/config.json";
 
     private Gson gson = new Gson();

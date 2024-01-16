@@ -7,7 +7,7 @@
     "videoFormat": "avc1",
     "videoQuality": 10,
     "videoOutPath": "/home/rrr/video-out",
-    "videoFileExtension": "avi",
+    "videoFileExtension": "mp4",
     "limitOccupiedSpace": "true",
     "maxOccupiedSpaceGB": 1,
     "keepFreeDiskSpaceGB": 100,
@@ -26,12 +26,8 @@
       "name": "cam0"
     },
 	{
-      "deviceId": 2,
-      "name": "cam2"
-    },
-	{
-      "deviceId": 4,
-      "name": "cam4"
+      "deviceId": 6,
+      "name": "cam6"
     }
   ]
 }

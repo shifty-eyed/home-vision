@@ -3,64 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="codemirror.min.css">
-    <script src="main.js"></script>
-    <script src="codemirror.min.js"></script>
-    <script src="javascript.min.js"></script>
+    <link rel="stylesheet" href="./codemirror.min.css">
+    <link rel="stylesheet" href="./main.css">
+    <script src="./main.js"></script>
+    <script src="./codemirror.min.js"></script>
+    <script src="./javascript.min.js"></script>
 
     <title>Image Tabs</title>
-    <style>
-        body {
-           font-family: Arial, sans-serif;
-           margin: 20px;
-           justify-content: space-between;
-         }
-
-         .sliders-container {
-           display: flex;
-           gap: 20px;
-         }
-
-         .slider-container {
-           flex-grow: 1;
-         }
-
-        .slider-label {
-           display: block;
-           margin-bottom: 5px;
-        }
-        .tab {
-            display: none;
-        }
-
-        .active-tab {
-            display: block;
-        }
-
-        #splitContainer {
-          display: flex;
-          margin-left: 20px;
-        }
-
-        #jsonEditorContainer {
-          display: none;
-          flex-grow: 1;
-          margin-left: 20px;
-        }
-
-        #jsonEditor {
-          width: 300px;
-          height: 720px;
-        }
-
-        #image-container {
-          flex-grow: 1;
-        }
-    </style>
 
 </head>
 <body>
-<div class="sliders-container">
+<div class="toolbar">
     <div class="slider-container">
         <label for="intervalSlider" class="slider-label">Preview:</label>
         <input type="range" id="intervalSlider" min="1" max="20" value="1" step="1" oninput="changePreviewFps();">

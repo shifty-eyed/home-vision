@@ -3,7 +3,7 @@ updateFrameInterval = setInterval(updateFrame, 1000);
 let config = {};
 
 // Fetch tab data from the server
-fetch('homevision/config')
+fetch('config')
   .then(response => response.json())
   .then(data => {
     config = data;
@@ -36,7 +36,7 @@ function frameImageUrl(cameraId) {
     const quality = parseInt(document.getElementById('qualitySlider').value)
     const ts = new Date().getTime();
 
-    return `homevision/cam/${cameraId}/frame?q=${quality}&ts=${ts}`;
+    return `cam/${cameraId}/frame?q=${quality}&ts=${ts}`;
 }
 
 function updateFrame() {
@@ -83,7 +83,7 @@ function toggleJsonEditor() {
     jsonEditorContainer.style.display = 'block';
 
     // Load JSON content from an endpoint (replace 'your-endpoint' with the actual URL)
-    fetch('homevision/config/edit')
+    fetch('config/edit')
       .then(response => response.json())
       .then(data => {
         jsonEditor.setValue(JSON.stringify(data, null, 2));
@@ -96,7 +96,7 @@ function toggleJsonEditor() {
 
 function saveJson() {
   const editedJson = jsonEditor.getValue();
-  fetch('homevision/config/edit', {
+  fetch('config/edit', {
       method: 'POST',
       headers: {
         'Content-Type': 'text/plain',

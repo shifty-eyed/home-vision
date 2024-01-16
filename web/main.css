@@ -1,0 +1,49 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 20px;
+    justify-content: space-between;
+}
+
+.toolbar {
+    display: flex;
+    justify-content: flex-start;
+    gap: 20px;
+    padding: 10px;
+}
+
+.slider-container {
+    /*flex-grow: 1;*/
+}
+
+.slider-label {
+    display: block;
+    margin-bottom: 5px;
+}
+
+.tab {
+    display: none;
+}
+
+.active-tab {
+    display: block;
+}
+
+#splitContainer {
+    display: flex;
+    margin-left: 20px;
+}
+
+#jsonEditorContainer {
+    display: none;
+    flex-grow: 1;
+    margin-left: 20px;
+}
+
+#jsonEditor {
+    width: 300px;
+    height: 720px;
+}
+
+#image-container {
+    flex-grow: 1;
+}
