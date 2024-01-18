@@ -49,12 +49,13 @@ function updateFrame() {
 }
 
 function changeTab(tabNumber) {
-  const imageElement = document.getElementById(`image${tabNumber}`);
+  const prevElement = document.getElementById(`image${currentTab}`);
+  const newElement = document.getElementById(`image${tabNumber}`);
 
-  imageElement.classList.remove('active-tab');
-  imageElement.classList.add('active-tab');
+  prevElement.classList.remove('active-tab');
+  newElement.classList.add('active-tab');
 
-  imageElement.src = frameImageUrl(tabNumber);
+  newElement.src = frameImageUrl(tabNumber);
   currentTab = tabNumber;
   updateFrame();
 }
@@ -105,7 +106,7 @@ function saveJson() {
     })
       .then(data => {
         console.log('Successfully saved:', data);
-        toggleJsonEditor();
+        location.reload();
       });
 
 }
