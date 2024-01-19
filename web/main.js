@@ -31,9 +31,10 @@ function initializeTabs() {
 }
 
 function frameImageUrl(cameraId) {
-    const quality = parseInt(document.getElementById('qualitySlider').value)
+    const quality = parseInt(document.getElementById('qualityDropdown').value)
+    const size = document.getElementById('imageSizeDropdown').value.split('x');
     const ts = new Date().getTime();
-    return `cam/${cameraId}/frame?q=${quality}&ts=${ts}`;
+    return `cam/${cameraId}/frame?q=${quality}&w=${size[0]}&h=${size[1]}&ts=${ts}`;
 }
 
 function updateFrame() {
@@ -42,8 +43,9 @@ function updateFrame() {
         const imageElement = document.getElementById('cameraView');
         imageElement.src = frameImageUrl(currentTab);
     }
-    const intervalSlider = document.getElementById('intervalSlider');
-    setTimeout(updateFrame, parseInt(intervalSlider.value));
+    const fpsDropdown = document.getElementById('fpsDropdown');
+    const interval= 1000 / parseInt(fpsDropdown.value)
+    setTimeout(updateFrame, interval);
 }
 
 function changeCameraTab(tabNumber) {
@@ -62,7 +64,7 @@ function activateJsonEditor() {
     inactivateAllTabs();
     hideElementById('cameraViewContainer');
     showElementById('jsonEditorContainer');
-    activateTabById('jsonEditorTab');
+    activateTabById('editConfigButton');
 
     fetch('config/edit')
         .then(response => response.json())
@@ -70,19 +72,6 @@ function activateJsonEditor() {
             jsonEditor.setValue(JSON.stringify(data, null, 2));
         });
 }
-
-function changePreviewFps() {
-    const intervalSlider = document.getElementById('intervalSlider');
-    const intervalValue = document.getElementById('intervalValue');
-
-    fps = parseInt(intervalSlider.value);
-    intervalValue.textContent = fps;
-}
-
-function updateQualityLabel(value) {
-    document.getElementById('qualityValue').textContent = value;
-}
-
 
 function saveJson() {
     const editedJson = jsonEditor.getValue();

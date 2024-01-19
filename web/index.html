@@ -25,16 +25,25 @@
 <div id="main">
     <div id="cameraViewContainer">
         <div id="cameraSettings">
-            <div class="slider-container">
-                <label for="intervalSlider" class="slider-label">Preview:</label>
-                <input type="range" id="intervalSlider" min="1" max="20" value="10" step="1" oninput="changePreviewFps();">
-                <span id="intervalValue">10</span> fps
-            </div>
-            <div class="slider-container">
-                <label for="qualitySlider" class="slider-label">Quality:</label>
-                <input type="range" id="qualitySlider" min="1" max="99" value="40" oninput="{updateQualityLabel(this.value)}">
-                <span id="qualityValue">40</span> %
-            </div>
+            <select id="fpsDropdown">
+                <option value="1">1 fps</option>
+                <option value="5">5 fps</option>
+                <option value="15" selected>15 fps</option>
+                <option value="20">20 fps</option>
+            </select>
+            <select id="qualityDropdown">
+                <option value="10">lowest</option>
+                <option value="30">low</option>
+                <option value="50" selected>medium</option>
+                <option value="70">good</option>
+                <option value="90">high</option>
+            </select>
+            <select id="imageSizeDropdown">
+                <option value="1920x1080">1920x1080</option>
+                <option value="1280x720" selected>1280x720</option>
+                <option value="1024x576">1024x576</option>
+                <option value="640x360">640x360</option>
+            </select>
         </div>
         <img id="cameraView" src="img/no-signal.jpg" alt="No Signal">
     </div>
