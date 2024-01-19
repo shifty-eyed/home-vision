@@ -175,13 +175,15 @@ public class VideoProcessor implements Runnable {
     }
 
     public byte[] getCurrentFrame(int w, int h, int quality) {
-        if (!isRunning()) {
-            return new byte[0];
-        }
         synchronized (frame) {
+            if (!isRunning() || frame.empty()) {
+                return null;
+            }
+
             Imgproc.resize(frame, frameAnnotated, new Size(w, h));
             var s = String.format("exp: %d, avgi: %d, fps: %.2f", actualExposure.get(), avgIntensity.get(), getActualFPS());
-            Imgproc.putText(frameAnnotated, s, new Point(20, 50), 0, 1.0, new Scalar(255, 255, 0));
+            Imgproc.putText(frameAnnotated, s, new Point(20, 50), 1, 1.0, new Scalar(255, 255, 0));
+
             Imgcodecs.imencode(".jpg", frameAnnotated, frameBuffer, new MatOfInt(Imgcodecs.IMWRITE_JPEG_QUALITY, quality));
             return frameBuffer.toArray();
         }

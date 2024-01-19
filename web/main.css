@@ -6,9 +6,27 @@ body {
 
 .toolbar {
     display: flex;
-    justify-content: flex-start;
+    justify-content: space-between;
     gap: 20px;
     padding: 10px;
+    background-color: black;
+}
+
+.tabs {
+    display: flex;
+    gap: 10px;
+}
+
+.tab {
+    padding: 10px;
+    border: 1px solid #000;
+    cursor: pointer;
+    color: white;
+}
+
+.active-tab {
+    background-color: white;
+    color: black;
 }
 
 .slider-container {
@@ -18,19 +36,6 @@ body {
 .slider-label {
     display: block;
     margin-bottom: 5px;
-}
-
-.tab {
-    display: none;
-}
-
-.active-tab {
-    display: block;
-}
-
-#splitContainer {
-    display: flex;
-    margin-left: 20px;
 }
 
 #jsonEditorContainer {

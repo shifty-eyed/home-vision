@@ -14,31 +14,36 @@
 </head>
 <body>
 <div class="toolbar">
-    <div class="slider-container">
-        <label for="intervalSlider" class="slider-label">Preview:</label>
-        <input type="range" id="intervalSlider" min="1" max="20" value="10" step="1" oninput="changePreviewFps();">
-        <span id="intervalValue">10</span> fps
+    <div id="tabsContainer" class="tabs">
+        <button id="cameraTab1" class="tab" onclick="changeCameraTab(0)">Camera1</button>
+        <button id="cameraTab2" class="tab" onclick="changeCameraTab(1)">Camera2</button>
     </div>
-    <div class="slider-container">
-        <label for="qualitySlider" class="slider-label">Quality:</label>
-        <input type="range" id="qualitySlider" min="1" max="99" value="40" oninput="{updateQualityLabel(this.value)}">
-        <span id="qualityValue">40</span> %
-    </div>
-    <button id="editConfigButton" onclick="toggleJsonEditor()">Edit Config</button>
+    <button id="editConfigButton" class="tab" onclick="activateJsonEditor()">Edit Config</button>
 </div>
 
 
-<div id="splitContainer">
-    <div id="leftContainer">
-        <div id="tabs-container"></div>
-        <div id="image-container"></div>
+<div id="main">
+    <div id="cameraViewContainer">
+        <div id="cameraSettings">
+            <div class="slider-container">
+                <label for="intervalSlider" class="slider-label">Preview:</label>
+                <input type="range" id="intervalSlider" min="1" max="20" value="10" step="1" oninput="changePreviewFps();">
+                <span id="intervalValue">10</span> fps
+            </div>
+            <div class="slider-container">
+                <label for="qualitySlider" class="slider-label">Quality:</label>
+                <input type="range" id="qualitySlider" min="1" max="99" value="40" oninput="{updateQualityLabel(this.value)}">
+                <span id="qualityValue">40</span> %
+            </div>
+        </div>
+        <img id="cameraView" src="img/no-signal.jpg" alt="No Signal">
     </div>
-
     <div id="jsonEditorContainer">
         <textarea id="jsonEditor"></textarea>
         <button onclick="saveJson()">Save</button>
     </div>
 </div>
+
 
 <script>
     // Initialize CodeMirror on the textarea
