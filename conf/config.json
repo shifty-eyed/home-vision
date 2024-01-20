@@ -4,10 +4,13 @@
     "frameHeight": 720,
     "fps": 30,
     "fileIntervalSeconds": 60,
-    "videoFormat": "avc1",
-    "videoQuality": 10,
-    "videoOutPath": "/home/rrr/video-out",
-    "videoFileExtension": "mp4",
+    "recording" : {
+      "mode" : "period:05-20",
+      "videoFormat": "avc1",
+      "videoQuality": 10,
+      "videoOutPath": "/home/rrr/video-out",
+      "videoFileExtension": "mp4"
+    },
     "limitOccupiedSpace": "true",
     "maxOccupiedSpaceGB": 1,
     "keepFreeDiskSpaceGB": 100,

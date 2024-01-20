@@ -3,7 +3,6 @@ package org.homevision.service;
 import lombok.Getter;
 import lombok.Setter;
 import org.opencv.core.*;
-import org.opencv.highgui.HighGui;
 import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
 import org.opencv.videoio.VideoCapture;
@@ -15,6 +14,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -35,7 +35,10 @@ public class VideoProcessor implements Runnable {
 
     @Getter
     @Setter
-    private boolean running = true;
+    private volatile boolean running = true;
+
+    @Getter
+    private volatile boolean recording = false;
 
     private Mat frame;
 
@@ -58,7 +61,28 @@ public class VideoProcessor implements Runnable {
                 Videoio.CAP_PROP_FRAME_WIDTH, config.getFrameWidth(), Videoio.CAP_PROP_FRAME_HEIGHT, config.getFrameHeight(),
                 Videoio.CAP_PROP_FPS, config.getFps()
         ));
-        createVideoWriter();
+        //executeRecordingMode();
+    }
+
+    public boolean canRecordNow() {
+        var mode = config.getRecording().getMode();
+        if ("always".equals(mode)) {
+            return true;
+        } else if ("auto".equals(mode)) {
+            return true;
+        } else if (mode != null && mode.startsWith("period:")) {
+            var period = mode.substring(7);
+            var parts = period.split("-");
+            if (parts.length != 2) {
+                log.error("Invalid period format: " + period);
+                return false;
+            }
+            var start = Integer.parseInt(parts[0]);
+            var end = Integer.parseInt(parts[1]);
+            var currentHour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY);
+            return currentHour >= start && currentHour <= end;
+        }
+        return false;
     }
 
 
@@ -101,7 +125,9 @@ public class VideoProcessor implements Runnable {
 
         avgIntensity.set(correctExposure(actualExposure.get()));
 
-        videoOut.write(frame);
+        if (recording) {
+            videoOut.write(frame);
+        }
         return true;
     }
 
@@ -126,8 +152,8 @@ public class VideoProcessor implements Runnable {
 
     private void createVideoWriter() {
         var currentDate = new Date();
-        var dirName = config.getVideoOutPath() + "/" + config.getName() + "/" + dateFormat.format(currentDate);
-        var fileName = dirName + "/" + timeFormat.format(currentDate) + "." + config.getVideoFileExtension();
+        var dirName = config.getRecording().getVideoOutPath() + "/" + config.getName() + "/" + dateFormat.format(currentDate);
+        var fileName = dirName + "/" + timeFormat.format(currentDate) + "." + config.getRecording().getVideoFileExtension();
 
         new File(dirName).mkdirs();
 
@@ -135,7 +161,7 @@ public class VideoProcessor implements Runnable {
         if (videoOut != null && videoOut.isOpened()) {
             videoOut.release();
         }
-        var format = config.getVideoFormat();
+        var format = config.getRecording().getVideoFormat();
         var codec = VideoWriter.fourcc(format.charAt(0), format.charAt(1), format.charAt(2), format.charAt(3));
         var args = new MatOfInt(
             //Videoio.VIDEOWRITER_PROP_QUALITY, config.getVideoQuality()
@@ -170,10 +196,6 @@ public class VideoProcessor implements Runnable {
         return frameProcessingTime.get();
     }
 
-    public double getActualFPS() {
-        return 1000.0 / getFrameProcessingTime();
-    }
-
     public byte[] getCurrentFrame(int w, int h, int quality) {
         synchronized (frame) {
             if (!isRunning() || frame.empty()) {
@@ -181,12 +203,28 @@ public class VideoProcessor implements Runnable {
             }
 
             Imgproc.resize(frame, frameAnnotated, new Size(w, h));
-            var s = String.format("exp: %d, avgi: %d, fps: %.2f", actualExposure.get(), avgIntensity.get(), getActualFPS());
+            var s = String.format("exp: %d\navgi: %d\nframetime: %d", actualExposure.get(), avgIntensity.get(), getFrameProcessingTime());
             Imgproc.putText(frameAnnotated, s, new Point(20, 50), 1, 1.0, new Scalar(255, 255, 0));
 
             Imgcodecs.imencode(".jpg", frameAnnotated, frameBuffer, new MatOfInt(Imgcodecs.IMWRITE_JPEG_QUALITY, quality));
             return frameBuffer.toArray();
         }
+    }
+
+    public void setRecording(boolean recording) {
+        if (this.recording == recording) {
+            return;
+        }
+        if (recording) {
+            createVideoWriter();
+            this.recording = true;
+        } else {
+            this.recording = false;
+            if (videoOut != null && videoOut.isOpened()) {
+                videoOut.release();
+            }
+        }
+
     }
 
 

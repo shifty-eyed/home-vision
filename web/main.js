@@ -116,3 +116,12 @@ function activateTabById(id) {
     }
 }
 
+function imageSizeChanged() {
+    const width = document.getElementById('imageSizeDropdown').value.split('x')[0];
+    document.getElementById('jsonEditorContainer').style.width = `${width}px`;
+    document.getElementById('cameraViewContainer').style.width = `${width}px`;
+    document.getElementById('body').style.width = `${width}px`;
+    //todo make whole body stype
+
+}
+

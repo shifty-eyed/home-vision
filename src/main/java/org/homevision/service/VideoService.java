@@ -59,7 +59,7 @@ public class VideoService {
 
 	@Scheduled(fixedRate = 60000)
 	private void ensureDiskSpace() throws IOException {
-		File storageDir = new File(config.getGlobal().getVideoOutPath());
+		File storageDir = new File(config.getGlobal().getRecording().getVideoOutPath());
 
 		var oversize = getBytesToFreeUp(storageDir);
 		if (oversize > 0) {
@@ -86,6 +86,15 @@ public class VideoService {
 					dir.delete();
 				}
 			});
+		}
+	}
+
+	@Scheduled(fixedDelay = 1000)
+	private void ensureVideoRecording() {
+		for (var proc : videoProcessors) {
+			if (proc.isRunning()) {
+				proc.setRecording(proc.canRecordNow());
+			}
 		}
 	}
 

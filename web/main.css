@@ -38,7 +38,12 @@ body {
 #jsonEditorContainer {
     display: none;
     flex-grow: 1;
-    margin-left: 20px;
+    margin-top: 10px;
+    border: 2px solid black;
+    border-radius: 5px;
+    overflow: scroll;
+    padding: 10px;
+    width: 700px;
 }
 
 #jsonEditor {
@@ -46,6 +51,15 @@ body {
     height: 720px;
 }
 
-#image-container {
-    flex-grow: 1;
+#cameraViewContainer {
+    margin-top: 10px;
+}
+
+#cameraSettings {
+    display: flex;
+    justify-content: flex-end;
+
+    margin-top: 5px;
+    margin-bottom: 5px;
+    
 }

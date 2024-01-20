@@ -12,6 +12,7 @@ import javax.annotation.PostConstruct;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -38,14 +39,20 @@ public class Config {
         private Integer frameHeight;
         private Integer fps;
         private Integer fileIntervalSeconds;
-        private String videoFormat;
-        private Integer videoQuality;
-        private String videoOutPath;
-        private String videoFileExtension;
+        private RecordingControl recording;
         private boolean limitOccupiedSpace;
         private Long maxOccupiedSpaceGB;
         private Long keepFreeDiskSpaceGB;
         private ExposureControl exposure;
+    }
+
+    @Data
+    public static class RecordingControl {
+        private String mode; //never, always, period:10-20, auto
+        private String videoFormat;
+        private Integer videoQuality;
+        private String videoOutPath;
+        private String videoFileExtension;
     }
 
     @Data
@@ -78,13 +85,27 @@ public class Config {
     private ConfigDto init(String json) {
         var config = gson.fromJson(json, ConfigDto.class);
         for (var deviceConfig : config.captureDevices) {
-            var dst = new BeanWrapperImpl(deviceConfig);
-            var definedProps = Arrays.stream(dst.getPropertyDescriptors())
-                .map(pd -> pd.getName())
-                .filter(name -> dst.getPropertyValue(name) != null).toArray(String[]::new);
-            BeanUtils.copyProperties(config.global, deviceConfig, definedProps);
+            copyPropertiesUndefinedInTarget(config.global, deviceConfig);
         }
         return config;
+    }
+
+    private void copyPropertiesUndefinedInTarget(Object src, Object dst) {
+        if (!src.getClass().equals(dst.getClass())) {
+            throw new IllegalArgumentException("Arguments must be of the same class");
+        }
+        var srcWrapper = new BeanWrapperImpl(src);
+        var dstWrapper = new BeanWrapperImpl(dst);
+        for (var pdDst : dstWrapper.getPropertyDescriptors()) {
+            var name = pdDst.getName();
+            var type = pdDst.getPropertyType();
+            if (dstWrapper.getPropertyValue(name) == null) {
+                var value = srcWrapper.getPropertyValue(name);
+                dstWrapper.setPropertyValue(name, value);
+            } else if (type.isAssignableFrom(RecordingControl.class) || type.isAssignableFrom(ExposureControl.class)) {
+                copyPropertiesUndefinedInTarget(srcWrapper.getPropertyValue(name), dstWrapper.getPropertyValue(name));
+            }
+        }
     }
 
     public String loadText() throws IOException {
