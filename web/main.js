@@ -27,6 +27,7 @@ function initializeTabs() {
 
     currentTab = 0;
     changeCameraTab(currentTab);
+    imageSizeChanged();
     updateFrame();
 }
 
@@ -51,8 +52,6 @@ function updateFrame() {
 function changeCameraTab(tabNumber) {
     inactivateAllTabs();
     showElementById('cameraViewContainer');
-    hideElementById('jsonEditorContainer');
-
     activateTabById(`cameraTab${tabNumber}`);
 
     const cameraView = document.getElementById('cameraView');
@@ -62,7 +61,6 @@ function changeCameraTab(tabNumber) {
 
 function activateJsonEditor() {
     inactivateAllTabs();
-    hideElementById('cameraViewContainer');
     showElementById('jsonEditorContainer');
     activateTabById('editConfigButton');
 
@@ -70,6 +68,18 @@ function activateJsonEditor() {
         .then(response => response.json())
         .then(data => {
             jsonEditor.setValue(JSON.stringify(data, null, 2));
+        });
+}
+
+function showListDevices() {
+    inactivateAllTabs();
+    showElementById('listDevicesContainer');
+    activateTabById('listDevicesButton');
+
+    fetch('list-devices')
+        .then(response => response.text())
+        .then(data => {
+            document.getElementById('listDevicesResult').innerHTML = data;
         });
 }
 
@@ -88,13 +98,6 @@ function saveJson() {
         });
 }
 
-function hideElementById(id) {
-    const element = document.getElementById(id);
-    if (element) {
-        element.style.display = 'none';
-    }
-}
-
 function showElementById(id) {
     const element = document.getElementById(id);
     if (element) {
@@ -106,6 +109,11 @@ function inactivateAllTabs() {
     const elements = document.getElementsByClassName('tab');
     for (let i = 0; i < elements.length; i++) {
         elements[i].classList.remove('active-tab');
+    }
+
+    const tabContainers = document.getElementsByClassName('tabContainer');
+    for (let i = 0; i < tabContainers.length; i++) {
+        tabContainers[i].style.display = 'none';
     }
 }
 
@@ -120,8 +128,34 @@ function imageSizeChanged() {
     const width = document.getElementById('imageSizeDropdown').value.split('x')[0];
     document.getElementById('jsonEditorContainer').style.width = `${width}px`;
     document.getElementById('cameraViewContainer').style.width = `${width}px`;
-    document.getElementById('body').style.width = `${width}px`;
-    //todo make whole body stype
+}
 
+function setCameraParam() {
+    const paramId = document.getElementById('paramId').value;
+    const paramValue = document.getElementById('paramValue').value;
+
+    fetch(`cam/${currentTab}/parameter?id=${paramId}&value=${paramValue}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'text/plain',
+        }
+    })
+        .then(response => response.text())
+        .then(data => {
+            document.getElementById('testResult').value = data;
+        });
+}
+
+function getCameraParam() {
+    const paramId = document.getElementById('paramId').value;
+
+    fetch(`cam/${currentTab}/parameter?id=${paramId}`)
+        .then(response => response.text())
+        .then(data => {
+            if (data.endsWith('.0')) {
+                data = data.substring(0, data.length - 2);
+            }
+            document.getElementById('testResult').value = data;
+        });
 }
 

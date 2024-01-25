@@ -4,8 +4,8 @@
     "frameHeight": 720,
     "fps": 30,
     "fileIntervalSeconds": 60,
-    "recording" : {
-      "mode" : "period:05-20",
+    "recording": {
+      "mode": "period:05-20",
       "videoFormat": "avc1",
       "videoQuality": 10,
       "videoOutPath": "/home/rrr/video-out",
@@ -27,10 +27,6 @@
     {
       "deviceId": 0,
       "name": "cam0"
-    },
-	{
-      "deviceId": 2,
-      "name": "cam2"
     }
   ]
 }

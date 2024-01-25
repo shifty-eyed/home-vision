@@ -1,5 +1,6 @@
 package org.homevision.controller;
 
+import org.apache.commons.io.IOUtils;
 import org.homevision.service.Config;
 import org.homevision.service.VideoService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,6 +13,7 @@ import java.io.IOException;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.concurrent.TimeUnit;
 
 @RestController
 @RequestMapping("/homevision")
@@ -49,21 +51,70 @@ public class MainController {
 
 		if (!videoService.isRunning()) {
 			return ResponseEntity.notFound().build();
-		} else {
-			var video = videoService.getVideoProcessors().get(cameraIndex);
-			var fileName = config.getAll().get(cameraIndex).getName() + "@" + dateTimeFormat.format(new Date()) + ".jpg";
+		}
+		if (videoService.getVideoProcessors().size() <= cameraIndex) {
+			return ResponseEntity.badRequest().build();
+		}
 
-			return ResponseEntity.ok()
+
+		var video = videoService.getVideoProcessors().get(cameraIndex);
+		var fileName = config.getAll().get(cameraIndex).getName() + "@" + dateTimeFormat.format(new Date()) + ".jpg";
+
+		return ResponseEntity.ok()
 				.header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=" + fileName)
 				.contentType(MediaType.IMAGE_JPEG)
 				.body(video.getCurrentFrame(w, h, q));
-		}
+	}
 
+	@GetMapping(value = "/cam/{cameraIndex}/parameter")
+	public String getCameraParameterValue(@PathVariable int cameraIndex, @RequestParam int id) {
+		if (!checkCameraIndexCorrect(cameraIndex))
+			throw new IllegalArgumentException("Not Available");
+
+		var video = videoService.getVideoProcessors().get(cameraIndex);
+		return video.getCameraParameter(id);
+	}
+
+	@PostMapping(value = "/cam/{cameraIndex}/parameter")
+	public String setCameraParameterValue(@PathVariable int cameraIndex, @RequestParam int id, @RequestParam double value) {
+		if (!checkCameraIndexCorrect(cameraIndex))
+			throw new IllegalArgumentException("Not Available");
+
+		var video = videoService.getVideoProcessors().get(cameraIndex);
+		if (video.setCameraParameter(id, value)) {
+			return "OK";
+		} else {
+			return "Failed";
+		}
+	}
+
+	private boolean checkCameraIndexCorrect(int cameraIndex) {
+		return videoService.isRunning() && videoService.getVideoProcessors().size() > cameraIndex;
 	}
 
 	@PostMapping("/restart")
-	public String restart() throws IOException {
+	public String restart() throws IOException, InterruptedException {
 		config.loadFromFile();
+		videoService.restart();
 		return "OK";
 	}
+
+
+	@GetMapping("/list-devices")
+	public String shell() throws IOException, InterruptedException {
+		String command = "v4l2-ctl --list-devices";
+		Process process = Runtime.getRuntime().exec(command);
+		var timeout = process.waitFor(5, TimeUnit.SECONDS);
+		if (!timeout) {
+			process.destroy();
+			return "Timeout";
+		}
+		return IOUtils.toString(process.getInputStream(), "UTF-8").replaceAll("\n", "<br/>");
+	}
+
+	//add get mapping for individual camera accept parameter for camera index and return empty string if camera is not running
+
+
+
+
 }

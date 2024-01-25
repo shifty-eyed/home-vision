@@ -47,6 +47,9 @@ public class VideoProcessor implements Runnable {
 
     private MatOfByte frameBuffer = new MatOfByte();
 
+    @Getter
+    private boolean exposureCorrectWorks = true;
+
 
     public VideoProcessor(Config.VideoSettings config) {
         this.config = config;
@@ -61,7 +64,7 @@ public class VideoProcessor implements Runnable {
                 Videoio.CAP_PROP_FRAME_WIDTH, config.getFrameWidth(), Videoio.CAP_PROP_FRAME_HEIGHT, config.getFrameHeight(),
                 Videoio.CAP_PROP_FPS, config.getFps()
         ));
-        //executeRecordingMode();
+        //capture.set(Videoio.CAP_PROP_AUTO_EXPOSURE, 1);
     }
 
     public boolean canRecordNow() {
@@ -122,7 +125,6 @@ public class VideoProcessor implements Runnable {
         }
 
         actualExposure.set((int)capture.get(Videoio.CAP_PROP_EXPOSURE));
-
         avgIntensity.set(correctExposure(actualExposure.get()));
 
         if (recording) {
@@ -140,12 +142,14 @@ public class VideoProcessor implements Runnable {
         double averageIntensity = Core.mean(frameGrayscale).val[0];
 
         if (exp.isAutoCorrect()) {
+            var exposureAdjustment = currentExposure;
             if (averageIntensity > exp.getUpperThreshold() && currentExposure > exp.getMinExposure()) {
-                capture.set(Videoio.CAP_PROP_EXPOSURE, currentExposure - exp.getCorrectionStep());
+                exposureAdjustment -= exp.getCorrectionStep();
             }
             if (averageIntensity < exp.getLowerThreshold() && currentExposure < exp.getMaxExposure()) {
-                capture.set(Videoio.CAP_PROP_EXPOSURE, currentExposure + exp.getCorrectionStep());
+                exposureAdjustment += exp.getCorrectionStep();
             }
+            exposureCorrectWorks = capture.set(Videoio.CAP_PROP_EXPOSURE, exposureAdjustment);
         }
         return (int)averageIntensity;
     }
@@ -203,7 +207,8 @@ public class VideoProcessor implements Runnable {
             }
 
             Imgproc.resize(frame, frameAnnotated, new Size(w, h));
-            var s = String.format("exp: %d\navgi: %d\nframetime: %d", actualExposure.get(), avgIntensity.get(), getFrameProcessingTime());
+            var s = String.format("exp: %d%s  avgi: %d  frametime: %d", actualExposure.get(), exposureCorrectWorks ? "" : "!",
+                    avgIntensity.get(), getFrameProcessingTime());
             Imgproc.putText(frameAnnotated, s, new Point(20, 50), 1, 1.0, new Scalar(255, 255, 0));
 
             Imgcodecs.imencode(".jpg", frameAnnotated, frameBuffer, new MatOfInt(Imgcodecs.IMWRITE_JPEG_QUALITY, quality));
@@ -224,7 +229,14 @@ public class VideoProcessor implements Runnable {
                 videoOut.release();
             }
         }
+    }
 
+    public String getCameraParameter(int parameter) {
+        return String.valueOf(capture.get(parameter));
+    }
+
+    public boolean setCameraParameter(int parameter, double value) {
+        return capture.set(parameter, value);
     }
 
 

@@ -18,12 +18,15 @@
         <button id="cameraTab1" class="tab" onclick="changeCameraTab(0)">Camera1</button>
         <button id="cameraTab2" class="tab" onclick="changeCameraTab(1)">Camera2</button>
     </div>
-    <button id="editConfigButton" class="tab" onclick="activateJsonEditor()">Edit Config</button>
+    <div id="staticTabs">
+        <button id="editConfigButton" class="tab" onclick="activateJsonEditor()">Edit Config</button>
+        <button id="listDevicesButton" class="tab" onclick="showListDevices()">List Devices</button>
+    </div>
 </div>
 
-
 <div id="main">
-    <div id="cameraViewContainer">
+    <div id="cameraViewContainer" class="tabContainer">
+        <img id="cameraView" src="img/no-signal.jpg" alt="No Signal">
         <div id="cameraSettings">
             <select id="fpsDropdown">
                 <option value="1">1 fps</option>
@@ -44,14 +47,66 @@
                 <option value="1024x576">1024x576</option>
                 <option value="640x360">640x360</option>
             </select>
+            <div style="flex-grow: 1;"></div>
+            <select id="paramId" onchange="getCameraParam()">
+                <option value="3">CAP_PROP_FRAME_WIDTH</option>
+                <option value="4">CAP_PROP_FRAME_HEIGHT</option>
+                <option value="5">CAP_PROP_FPS</option>
+                <option value="6">CAP_PROP_FOURCC</option>
+                <option value="7">CAP_PROP_FRAME_COUNT</option>
+                <option value="8">CAP_PROP_FORMAT</option>
+                <option value="9">CAP_PROP_MODE</option>
+                <option value="10">CAP_PROP_BRIGHTNESS</option>
+                <option value="11">CAP_PROP_CONTRAST</option>
+                <option value="12">CAP_PROP_SATURATION</option>
+                <option value="13">CAP_PROP_HUE</option>
+                <option value="14">CAP_PROP_GAIN</option>
+                <option value="15">CAP_PROP_EXPOSURE</option>
+                <option value="16">CAP_PROP_CONVERT_RGB</option>
+                <option value="17">CAP_PROP_WHITE_BALANCE_BLUE_U</option>
+                <option value="18">CAP_PROP_RECTIFICATION</option>
+                <option value="19">CAP_PROP_MONOCHROME</option>
+                <option value="20">CAP_PROP_SHARPNESS</option>
+                <option value="21">CAP_PROP_AUTO_EXPOSURE</option>
+                <option value="22">CAP_PROP_GAMMA</option>
+                <option value="23">CAP_PROP_TEMPERATURE</option>
+                <option value="24">CAP_PROP_TRIGGER</option>
+                <option value="25">CAP_PROP_TRIGGER_DELAY</option>
+                <option value="26">CAP_PROP_WHITE_BALANCE_RED_V</option>
+                <option value="27">CAP_PROP_ZOOM</option>
+                <option value="28">CAP_PROP_FOCUS</option>
+                <option value="29">CAP_PROP_GUID</option>
+                <option value="30">CAP_PROP_ISO_SPEED</option>
+                <option value="32">CAP_PROP_BACKLIGHT</option>
+                <option value="33">CAP_PROP_PAN</option>
+                <option value="34">CAP_PROP_TILT</option>
+                <option value="35">CAP_PROP_ROLL</option>
+                <option value="36">CAP_PROP_IRIS</option>
+                <option value="37">CAP_PROP_SETTINGS</option>
+                <option value="38">CAP_PROP_BUFFERSIZE</option>
+                <option value="39">CAP_PROP_AUTOFOCUS</option>
+                <option value="40">CAP_PROP_SAR_NUM</option>
+                <option value="41">CAP_PROP_SAR_DEN</option>
+                <option value="42">CAP_PROP_BACKEND</option>
+                <option value="43">CAP_PROP_CHANNEL</option>
+                <option value="44">CAP_PROP_AUTO_WB</option>
+                <option value="45">CAP_PROP_WB_TEMPERATURE</option>
+            </select>
+            <input disabled type="text" id="testResult" default="Result" style="width: 120px">
+            <button id="setCameraParam" onclick="setCameraParam()">Set</button>
+            <input type="text" id="paramValue" style="width: 40px">
         </div>
-        <img id="cameraView" src="img/no-signal.jpg" alt="No Signal">
     </div>
-    <div id="jsonEditorContainer">
+    <div id="jsonEditorContainer" class="tabContainer">
         <textarea id="jsonEditor"></textarea>
         <button onclick="saveJson()">Apply</button>
         <button onclick="changeCameraTab(0)">Discard</button>
     </div>
+    <div id="listDevicesContainer" class="tabContainer">
+        <div id="listDevicesResult"></div>
+    </div>
+
+
 </div>
 
 
