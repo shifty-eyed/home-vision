@@ -15,6 +15,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
 @Component
 public class Config {
@@ -43,7 +44,7 @@ public class Config {
         private boolean limitOccupiedSpace;
         private Long maxOccupiedSpaceGB;
         private Long keepFreeDiskSpaceGB;
-        private ExposureControl exposure;
+        private Map<String, Integer> captureProperties;
     }
 
     @Data
@@ -54,17 +55,6 @@ public class Config {
         private String videoOutPath;
         private String videoFileExtension;
     }
-
-    @Data
-    public static class ExposureControl {
-        private boolean autoCorrect;
-        private Integer minExposure;
-        private Integer maxExposure;
-        private Integer lowerThreshold;
-        private Integer upperThreshold;
-        private Integer correctionStep;
-    }
-
 
     private ConfigDto data;
 
@@ -102,8 +92,16 @@ public class Config {
             if (dstWrapper.getPropertyValue(name) == null) {
                 var value = srcWrapper.getPropertyValue(name);
                 dstWrapper.setPropertyValue(name, value);
-            } else if (type.isAssignableFrom(RecordingControl.class) || type.isAssignableFrom(ExposureControl.class)) {
+            } else if (type.isAssignableFrom(RecordingControl.class)) {
                 copyPropertiesUndefinedInTarget(srcWrapper.getPropertyValue(name), dstWrapper.getPropertyValue(name));
+            } else if (type.isAssignableFrom(Map.class)) {
+                var srcMap = (Map) srcWrapper.getPropertyValue(name);
+                var dstMap = (Map) dstWrapper.getPropertyValue(name);
+                for (var key : srcMap.keySet()) {
+                    if (!dstMap.containsKey(key)) {
+                        dstMap.put(key, srcMap.get(key));
+                    }
+                }
             }
         }
     }

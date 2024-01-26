@@ -14,19 +14,18 @@
     "limitOccupiedSpace": "true",
     "maxOccupiedSpaceGB": 1,
     "keepFreeDiskSpaceGB": 100,
-    "exposure": {
-      "autoCorrect": "true",
-      "minExposure": 10,
-      "maxExposure": 350,
-      "lowerThreshold": 100,
-      "upperThreshold": 160,
-      "correctionStep": 2
+    "captureProperties": {
+      "AUTO_EXPOSURE": 1
     }
   },
   "captureDevices": [
     {
       "deviceId": 0,
-      "name": "cam0"
+      "name": "cam0",
+	  "captureProperties": {
+        "SATURATION": 10
+      }
+	  
     }
   ]
 }
