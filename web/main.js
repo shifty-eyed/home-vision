@@ -1,14 +1,13 @@
 let currentTab = 0;
 let config = {};
 
-// Fetch tab data from the server
-fetch('config')
+fetch('/v/config')
     .then(response => response.json())
     .then(data => {
         config = data;
         initializeTabs();
     })
-    .catch(error => console.error('Error fetching tab data:', error));
+    .catch(error => console.error('Error ing tab data:', error));
 
 function initializeTabs() {
     const tabsContainer = document.getElementById('tabsContainer');
@@ -27,6 +26,10 @@ function initializeTabs() {
 
     currentTab = 0;
     changeCameraTab(currentTab);
+    if (window.innerWidth < 500) {
+        const imageSizeDropdown = document.getElementById('imageSizeDropdown');
+        imageSizeDropdown.selectedIndex = 4;
+    }
     imageSizeChanged();
     updateFrame();
 }
@@ -35,7 +38,7 @@ function frameImageUrl(cameraId) {
     const quality = parseInt(document.getElementById('qualityDropdown').value)
     const size = document.getElementById('imageSizeDropdown').value.split('x');
     const ts = new Date().getTime();
-    return `cam/${cameraId}/frame?q=${quality}&w=${size[0]}&h=${size[1]}&ts=${ts}`;
+    return `/v/cam/${cameraId}/frame?q=${quality}&w=${size[0]}&h=${size[1]}&ts=${ts}`;
 }
 
 function updateFrame() {
@@ -64,7 +67,7 @@ function activateJsonEditor() {
     showElementById('jsonEditorContainer');
     activateTabById('editConfigButton');
 
-    fetch('config/edit')
+    fetch('/v/config/edit')
         .then(response => response.json())
         .then(data => {
             jsonEditor.setValue(JSON.stringify(data, null, 2));
@@ -76,7 +79,7 @@ function showListDevices() {
     showElementById('listDevicesContainer');
     activateTabById('listDevicesButton');
 
-    fetch('list-devices')
+    fetch('/v/list-devices')
         .then(response => response.text())
         .then(data => {
             document.getElementById('listDevicesResult').innerHTML = data;
@@ -85,7 +88,7 @@ function showListDevices() {
 
 function saveJson() {
     const editedJson = jsonEditor.getValue();
-    fetch('config/edit', {
+    fetch('/v/config/edit', {
         method: 'POST',
         headers: {
             'Content-Type': 'text/plain',
@@ -134,7 +137,7 @@ function setCameraParam() {
     const paramId = document.getElementById('paramId').value;
     const paramValue = document.getElementById('paramValue').value;
 
-    fetch(`cam/${currentTab}/parameter?id=${paramId}&value=${paramValue}`, {
+    fetch(`/v/cam/${currentTab}/parameter?id=${paramId}&value=${paramValue}`, {
         method: 'POST',
         headers: {
             'Content-Type': 'text/plain',
@@ -149,7 +152,7 @@ function setCameraParam() {
 function getCameraParam() {
     const paramId = document.getElementById('paramId').value;
 
-    fetch(`cam/${currentTab}/parameter?id=${paramId}`)
+    fetch(`/v/cam/${currentTab}/parameter?id=${paramId}`)
         .then(response => response.text())
         .then(data => {
             if (data.endsWith('.0')) {

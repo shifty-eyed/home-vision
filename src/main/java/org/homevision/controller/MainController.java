@@ -16,7 +16,7 @@ import java.util.Date;
 import java.util.concurrent.TimeUnit;
 
 @RestController
-@RequestMapping("/homevision")
+@RequestMapping("/v")
 public class MainController {
 
 	@Autowired

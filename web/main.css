@@ -77,3 +77,23 @@ body {
     justify-content: center;
     align-items: center;
 }
+
+.cameraParam {
+    margin-bottom: 10px;
+}
+
+
+@media only screen and (max-width: 411px) {
+    /* Styles for Pixel 4 and similar devices */
+    body {
+        max-width: 400px;
+    }
+
+    #cameraSettings {
+        width: 400px;
+        display: block;
+    }
+
+
+
+}

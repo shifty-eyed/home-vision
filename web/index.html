@@ -26,7 +26,7 @@
 
 <div id="main">
     <div id="cameraViewContainer" class="tabContainer">
-        <img id="cameraView" src="img/no-signal.jpg" alt="No Signal">
+        <img id="cameraView" alt="No Signal">
         <div id="cameraSettings">
             <select id="fpsDropdown">
                 <option value="1">1 fps</option>
@@ -37,8 +37,8 @@
             <select id="qualityDropdown">
                 <option value="10">lowest</option>
                 <option value="30">low</option>
-                <option value="50" selected>medium</option>
-                <option value="70">good</option>
+                <option value="50">medium</option>
+                <option value="70" selected>good</option>
                 <option value="90">high</option>
             </select>
             <select id="imageSizeDropdown" onclick="imageSizeChanged()">
@@ -46,22 +46,23 @@
                 <option value="1280x720" selected>1280x720</option>
                 <option value="1024x576">1024x576</option>
                 <option value="640x360">640x360</option>
+                <option value="384x216">384x216</option>
             </select>
             <div style="flex-grow: 1;"></div>
-            <select id="paramId" onchange="getCameraParam()">
+            <select id="paramId" onchange="getCameraParam()" class="cameraParam">
+                <option value="21">AUTO_EXPOSURE</option>
+                <option value="15">EXPOSURE</option>
+                <option value="22">GAMMA</option>
                 <option value="10">BRIGHTNESS</option>
                 <option value="11">CONTRAST</option>
                 <option value="12">SATURATION</option>
                 <option value="13">HUE</option>
                 <option value="14">GAIN</option>
-                <option value="15">EXPOSURE</option>
                 <option value="16">CONVERT_RGB</option>
                 <option value="17">WHITE_BALANCE_BLUE_U</option>
                 <option value="18">RECTIFICATION</option>
                 <option value="19">MONOCHROME</option>
                 <option value="20">SHARPNESS</option>
-                <option value="21">AUTO_EXPOSURE</option>
-                <option value="22">GAMMA</option>
                 <option value="23">TEMPERATURE</option>
                 <option value="24">TRIGGER</option>
                 <option value="25">TRIGGER_DELAY</option>
@@ -84,9 +85,9 @@
                 <option value="44">AUTO_WB</option>
                 <option value="45">WB_TEMPERATURE</option>
             </select>
-            <input disabled type="text" id="testResult" default="Result" style="width: 120px">
-            <button id="setCameraParam" onclick="setCameraParam()">Set</button>
-            <input type="text" id="paramValue" style="width: 40px">
+            <input disabled type="text" id="testResult" default="Result" class="cameraParam" style="width: 120px">
+            <button id="setCameraParam" class="cameraParam" onclick="setCameraParam()">Set</button>
+            <input type="text" id="paramValue" class="cameraParam" style="width: 40px">
         </div>
     </div>
     <div id="jsonEditorContainer" class="tabContainer">

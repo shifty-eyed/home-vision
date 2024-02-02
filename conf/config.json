@@ -23,7 +23,7 @@
       "deviceId": 0,
       "name": "cam0",
 	  "captureProperties": {
-        "SATURATION": 10
+        "SATURATION": 40
       }
 	  
     }
