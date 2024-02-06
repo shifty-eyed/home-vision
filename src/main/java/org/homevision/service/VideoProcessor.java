@@ -158,7 +158,7 @@ public class VideoProcessor implements Runnable {
         var args = new MatOfInt(
             //Videoio.VIDEOWRITER_PROP_QUALITY, config.getVideoQuality()
             //Videoio.VIDEOWRITER_PROP_FRAMEBYTES, 500
-            //Videoio.VIDEOWRITER_PROP_HW_ACCELERATION, Videoio.VIDEO_ACCELERATION_VAAPI
+            //Videoio.VIDEOWRITER_PROP_HW_ACCELERATION, Videoio.VIDEO_ACCELERATION_VAAPI,
             //Videoio.VIDEOWRITER_PROP_HW_ACCELERATION_USE_OPENCL, 1
 
         );

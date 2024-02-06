@@ -43,9 +43,9 @@
         <dependency>
             <groupId>org.opencv</groupId>
             <artifactId>opencv</artifactId>
-            <version>4.8.1</version>
+            <version>4.9.0</version>
             <scope>system</scope>
-            <systemPath>${project.basedir}/lib/opencv-481.jar</systemPath>
+            <systemPath>${project.basedir}/lib/opencv-490.jar</systemPath>
         </dependency>
 
     </dependencies>
