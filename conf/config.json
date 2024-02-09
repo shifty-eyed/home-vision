@@ -1,7 +1,7 @@
 {
   "global": {
-    "frameWidth": 1280,
-    "frameHeight": 720,
+    "frameWidth": 1920,
+    "frameHeight": 1080,
     "fps": 30,
     "fileIntervalSeconds": 60,
     "recording": {

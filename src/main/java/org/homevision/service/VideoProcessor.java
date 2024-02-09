@@ -155,12 +155,29 @@ public class VideoProcessor implements Runnable {
         }
         var format = config.getRecording().getVideoFormat();
         var codec = VideoWriter.fourcc(format.charAt(0), format.charAt(1), format.charAt(2), format.charAt(3));
+
+        /*
+enum AVHWDeviceType {
+    AV_HWDEVICE_TYPE_NONE,
+    AV_HWDEVICE_TYPE_VDPAU,
+    AV_HWDEVICE_TYPE_CUDA,
+    AV_HWDEVICE_TYPE_VAAPI,
+    AV_HWDEVICE_TYPE_DXVA2,
+    AV_HWDEVICE_TYPE_QSV,
+    AV_HWDEVICE_TYPE_VIDEOTOOLBOX,
+    AV_HWDEVICE_TYPE_D3D11VA,
+    AV_HWDEVICE_TYPE_DRM,
+    AV_HWDEVICE_TYPE_OPENCL,
+    AV_HWDEVICE_TYPE_MEDIACODEC,
+    AV_HWDEVICE_TYPE_VULKAN,
+    AV_HWDEVICE_TYPE_D3D12VA,
+};
+        * */
         var args = new MatOfInt(
             //Videoio.VIDEOWRITER_PROP_QUALITY, config.getVideoQuality()
             //Videoio.VIDEOWRITER_PROP_FRAMEBYTES, 500
             //Videoio.VIDEOWRITER_PROP_HW_ACCELERATION, Videoio.VIDEO_ACCELERATION_VAAPI,
             //Videoio.VIDEOWRITER_PROP_HW_ACCELERATION_USE_OPENCL, 1
-
         );
         videoOut = new VideoWriter(fileName, Videoio.CAP_FFMPEG, codec, config.getFps(),
                 new Size(config.getFrameWidth(), config.getFrameHeight()), args);

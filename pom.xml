@@ -98,6 +98,9 @@
                             <resources>
                                 <resource>
                                     <directory>lib</directory>
+                                    <excludes>
+                                        <exclude>opencv-490.jar</exclude>
+                                    </excludes>
                                 </resource>
                             </resources>
                         </configuration>
