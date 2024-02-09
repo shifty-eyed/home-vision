@@ -2,12 +2,12 @@
   "global": {
     "frameWidth": 1920,
     "frameHeight": 1080,
-    "fps": 30,
+    "fps": 25,
     "fileIntervalSeconds": 60,
     "recording": {
       "mode": "period:05-20",
-      "videoFormat": "avc1",
-      "videoQuality": 10,
+      "videoCodec": "MPEG4",
+      "videoBitrateKbps": 1200,
       "videoOutPath": "/home/rrr/video-out",
       "videoFileExtension": "mp4"
     },

@@ -2,6 +2,9 @@ package org.homevision.service;
 
 import lombok.Getter;
 import lombok.Setter;
+import org.bytedeco.ffmpeg.global.avcodec;
+import org.bytedeco.javacv.FFmpegFrameRecorder;
+import org.bytedeco.javacv.OpenCVFrameConverter;
 import org.opencv.core.*;
 import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
@@ -23,7 +26,8 @@ public class VideoProcessor implements Runnable {
 
     private final Logger log;
     private final VideoCapture capture;
-    private VideoWriter videoOut;
+
+    private FFmpegFrameRecorder recorder;
     private final Config.VideoSettings config;
     private static final DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
     private static final DateFormat timeFormat = new SimpleDateFormat("HH_mm_ss");
@@ -43,6 +47,7 @@ public class VideoProcessor implements Runnable {
 
     private MatOfByte frameBuffer = new MatOfByte();
 
+    private OpenCVFrameConverter.ToMat converterToMat = new OpenCVFrameConverter.ToMat();
 
     public VideoProcessor(Config.VideoSettings config) {
         this.config = config;
@@ -53,8 +58,8 @@ public class VideoProcessor implements Runnable {
 
         capture = new VideoCapture(config.getDeviceId(), Videoio.CAP_V4L2, new MatOfInt(
                 Videoio.CAP_PROP_FOURCC, VideoWriter.fourcc('M', 'J', 'P', 'G'),
-                Videoio.CAP_PROP_FRAME_WIDTH, config.getFrameWidth(), Videoio.CAP_PROP_FRAME_HEIGHT, config.getFrameHeight(),
-                Videoio.CAP_PROP_FPS, config.getFps()
+                Videoio.CAP_PROP_FRAME_WIDTH, config.getFrameWidth(), Videoio.CAP_PROP_FRAME_HEIGHT, config.getFrameHeight()
+                //Videoio.CAP_PROP_FPS, config.getFps()
         ));
         applyCaptureProperties();
     }
@@ -137,9 +142,24 @@ public class VideoProcessor implements Runnable {
         }
 
         if (recording) {
-            videoOut.write(frame);
+            try {
+                recorder.record(converterToMat.convert(frame));
+            } catch (FFmpegFrameRecorder.Exception e) {
+                throw new RuntimeException(e);
+            }
         }
         return true;
+    }
+
+    private void safeStopRecording() {
+        if (recorder != null) {
+            try {
+                recorder.stop();
+                recorder.release();
+            } catch (Exception e) {
+                log.error("Failed to stop recorder", e);
+            }
+        }
     }
 
     private void createVideoWriter() {
@@ -150,41 +170,19 @@ public class VideoProcessor implements Runnable {
         new File(dirName).mkdirs();
 
         log.info("Starting new file: " + fileName);
-        if (videoOut != null && videoOut.isOpened()) {
-            videoOut.release();
-        }
-        var format = config.getRecording().getVideoFormat();
-        var codec = VideoWriter.fourcc(format.charAt(0), format.charAt(1), format.charAt(2), format.charAt(3));
+        safeStopRecording();
 
-        /*
-enum AVHWDeviceType {
-    AV_HWDEVICE_TYPE_NONE,
-    AV_HWDEVICE_TYPE_VDPAU,
-    AV_HWDEVICE_TYPE_CUDA,
-    AV_HWDEVICE_TYPE_VAAPI,
-    AV_HWDEVICE_TYPE_DXVA2,
-    AV_HWDEVICE_TYPE_QSV,
-    AV_HWDEVICE_TYPE_VIDEOTOOLBOX,
-    AV_HWDEVICE_TYPE_D3D11VA,
-    AV_HWDEVICE_TYPE_DRM,
-    AV_HWDEVICE_TYPE_OPENCL,
-    AV_HWDEVICE_TYPE_MEDIACODEC,
-    AV_HWDEVICE_TYPE_VULKAN,
-    AV_HWDEVICE_TYPE_D3D12VA,
-};
-        * */
-        var args = new MatOfInt(
-            //Videoio.VIDEOWRITER_PROP_QUALITY, config.getVideoQuality()
-            //Videoio.VIDEOWRITER_PROP_FRAMEBYTES, 500
-            //Videoio.VIDEOWRITER_PROP_HW_ACCELERATION, Videoio.VIDEO_ACCELERATION_VAAPI,
-            //Videoio.VIDEOWRITER_PROP_HW_ACCELERATION_USE_OPENCL, 1
-        );
-        videoOut = new VideoWriter(fileName, Videoio.CAP_FFMPEG, codec, config.getFps(),
-                new Size(config.getFrameWidth(), config.getFrameHeight()), args);
-
+        var videoCodec = VideoService.FFMPEG_CODEC_MAP.get(config.getRecording().getVideoCodec());
+        recorder = new FFmpegFrameRecorder(fileName, config.getFrameWidth(), config.getFrameHeight());
+        recorder.setVideoCodec(videoCodec);
+        recorder.setFormat(config.getRecording().getVideoFileExtension());
+        recorder.setFrameRate(config.getFps());
+        recorder.setVideoBitrate(12_000_000);
         try {
-            log.info("Video backend: " + videoOut.getBackendName());
-        } catch (Exception e) {}
+            recorder.start();
+        } catch (org.bytedeco.javacv.FrameRecorder.Exception e) {
+            log.error("Failed to start recorder", e);
+        }
     }
 
     private void shutdown() {
@@ -195,9 +193,8 @@ enum AVHWDeviceType {
             capture.release();
             log.info("Camera closed");
         }
-        if (videoOut != null && videoOut.isOpened()) {
-            videoOut.release();
-        }
+        safeStopRecording();
+
     }
 
     public long getFrameProcessingTime() {
@@ -228,9 +225,7 @@ enum AVHWDeviceType {
             this.recording = true;
         } else {
             this.recording = false;
-            if (videoOut != null && videoOut.isOpened()) {
-                videoOut.release();
-            }
+            safeStopRecording();
         }
     }
 

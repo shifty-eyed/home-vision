@@ -50,8 +50,8 @@ public class Config {
     @Data
     public static class RecordingControl {
         private String mode; //never, always, period:10-20, auto
-        private String videoFormat;
-        private Integer videoQuality;
+        private String videoCodec;
+        private Integer videoBitrateKbps;
         private String videoOutPath;
         private String videoFileExtension;
     }

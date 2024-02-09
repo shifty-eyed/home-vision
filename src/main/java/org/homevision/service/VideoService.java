@@ -2,6 +2,7 @@ package org.homevision.service;
 
 import lombok.Getter;
 import org.apache.commons.io.FileUtils;
+import org.bytedeco.ffmpeg.global.avcodec;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -60,6 +61,20 @@ public class VideoService {
 			entry("CHANNEL", 43),
 			entry("AUTO_WB", 44),
 			entry("WB_TEMPERATURE", 45)
+	);
+
+	public static final Map<String, Integer> FFMPEG_CODEC_MAP = Map.ofEntries(
+			entry("MPEG1VIDEO", avcodec.AV_CODEC_ID_MPEG1VIDEO),
+			entry("MPEG2VIDEO", avcodec.AV_CODEC_ID_MPEG2VIDEO),
+			entry("MPEG4", avcodec.AV_CODEC_ID_MPEG4),
+			entry("H261", avcodec.AV_CODEC_ID_H261),
+			entry("H263", avcodec.AV_CODEC_ID_H263),
+			entry("H264", avcodec.AV_CODEC_ID_H264),
+			entry("H265", avcodec.AV_CODEC_ID_H265),
+			entry("VP8", avcodec.AV_CODEC_ID_VP8),
+			entry("VP9", avcodec.AV_CODEC_ID_VP9),
+			entry("HEVC", avcodec.AV_CODEC_ID_HEVC)
+
 	);
 
 	private static final Logger log = LoggerFactory.getLogger(VideoService.class.getSimpleName());
