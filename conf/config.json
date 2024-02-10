@@ -3,29 +3,25 @@
     "frameWidth": 1920,
     "frameHeight": 1080,
     "fps": 25,
-    "fileIntervalSeconds": 60,
     "recording": {
       "mode": "period:05-20",
       "videoCodec": "MPEG4",
-      "videoBitrateKbps": 1200,
+      "videoBitrateKbps": 5200,
       "videoOutPath": "/home/rrr/video-out",
-      "videoFileExtension": "mp4"
+      "videoFileExtension": "mp4",
+      "fileIntervalSeconds": 60,
+      "limitOccupiedSpace": "true",
+      "maxOccupiedSpaceGB": 1,
+      "keepFreeDiskSpaceGB": 100
     },
-    "limitOccupiedSpace": "true",
-    "maxOccupiedSpaceGB": 1,
-    "keepFreeDiskSpaceGB": 100,
     "captureProperties": {
-      "AUTO_EXPOSURE": 1
+      "AUTO_EXPOSURE": 3
     }
   },
   "captureDevices": [
     {
       "deviceId": 0,
-      "name": "cam0",
-	  "captureProperties": {
-        "SATURATION": 40
-      }
-	  
+      "name": "cam0"
     }
   ]
 }

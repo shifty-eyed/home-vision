@@ -59,7 +59,6 @@ public class VideoProcessor implements Runnable {
         capture = new VideoCapture(config.getDeviceId(), Videoio.CAP_V4L2, new MatOfInt(
                 Videoio.CAP_PROP_FOURCC, VideoWriter.fourcc('M', 'J', 'P', 'G'),
                 Videoio.CAP_PROP_FRAME_WIDTH, config.getFrameWidth(), Videoio.CAP_PROP_FRAME_HEIGHT, config.getFrameHeight()
-                //Videoio.CAP_PROP_FPS, config.getFps()
         ));
         applyCaptureProperties();
     }
@@ -125,7 +124,7 @@ public class VideoProcessor implements Runnable {
                 }
             }
 
-            if (System.currentTimeMillis() - videoFileStartTime > config.getFileIntervalSeconds() * 1000) {
+            if (System.currentTimeMillis() - videoFileStartTime > config.getRecording().getFileIntervalSeconds() * 1000) {
                 createVideoWriter();
                 videoFileStartTime = System.currentTimeMillis();
             }
@@ -177,7 +176,7 @@ public class VideoProcessor implements Runnable {
         recorder.setVideoCodec(videoCodec);
         recorder.setFormat(config.getRecording().getVideoFileExtension());
         recorder.setFrameRate(config.getFps());
-        recorder.setVideoBitrate(12_000_000);
+        recorder.setVideoBitrate(config.getRecording().getVideoBitrateKbps() * 1000);
         try {
             recorder.start();
         } catch (org.bytedeco.javacv.FrameRecorder.Exception e) {

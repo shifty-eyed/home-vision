@@ -39,11 +39,7 @@ public class Config {
         private Integer frameWidth;
         private Integer frameHeight;
         private Integer fps;
-        private Integer fileIntervalSeconds;
         private RecordingControl recording;
-        private boolean limitOccupiedSpace;
-        private Long maxOccupiedSpaceGB;
-        private Long keepFreeDiskSpaceGB;
         private Map<String, Integer> captureProperties;
     }
 
@@ -54,6 +50,10 @@ public class Config {
         private Integer videoBitrateKbps;
         private String videoOutPath;
         private String videoFileExtension;
+        private boolean limitOccupiedSpace;
+        private Integer fileIntervalSeconds;
+        private Long maxOccupiedSpaceGB;
+        private Long keepFreeDiskSpaceGB;
     }
 
     private ConfigDto data;

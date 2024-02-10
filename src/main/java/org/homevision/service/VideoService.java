@@ -60,7 +60,8 @@ public class VideoService {
 			entry("SAR_DEN", 41),
 			entry("CHANNEL", 43),
 			entry("AUTO_WB", 44),
-			entry("WB_TEMPERATURE", 45)
+			entry("WB_TEMPERATURE", 45),
+			entry("FPS", 5)
 	);
 
 	public static final Map<String, Integer> FFMPEG_CODEC_MAP = Map.ofEntries(
@@ -153,10 +154,10 @@ public class VideoService {
 	private long getBytesToFreeUp(File storageDir) throws IOException {
 		final var conf = config.getGlobal();
 		var sizeActual = FileUtils.sizeOfDirectory(storageDir);
-		var sizeMax = conf.getMaxOccupiedSpaceGB() * FileUtils.ONE_GB;
-		var oversizeOccupied = conf.isLimitOccupiedSpace() ? Math.max(sizeActual - sizeMax, 0) : 0;
+		var sizeMax = conf.getRecording().getMaxOccupiedSpaceGB() * FileUtils.ONE_GB;
+		var oversizeOccupied = conf.getRecording().isLimitOccupiedSpace() ? Math.max(sizeActual - sizeMax, 0) : 0;
 
-		var diskFreeTarget = conf.getKeepFreeDiskSpaceGB() * FileUtils.ONE_GB;
+		var diskFreeTarget = conf.getRecording().getKeepFreeDiskSpaceGB() * FileUtils.ONE_GB;
 		var diskFreeActual = Files.getFileStore(storageDir.toPath()).getUsableSpace();
 		var oversizeOccupiedFreeSpace = Math.max(diskFreeTarget - diskFreeActual, 0);
 
