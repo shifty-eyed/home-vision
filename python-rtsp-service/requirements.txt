@@ -1,0 +1,11 @@
+# Python RTSP Video Service Requirements
+# No external Python packages required - uses only standard library
+#
+# System requirements:
+# - Python 3.7+
+# - ffmpeg (must be installed on the system)
+#
+# To install ffmpeg:
+# Ubuntu/Debian: sudo apt-get install ffmpeg
+# macOS: brew install ffmpeg
+# Windows: Download from https://ffmpeg.org/download.html
