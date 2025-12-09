@@ -1,0 +1,5 @@
+logging is useless
+
+maybe write always into live folder and when move to premanent folders so never break stream
+
+ffmpeg -rtsp_transport tcp -i rtsp://192.168.4.156:554/stream0 -c:v copy -an -f segment -segment_time 180.0 -segment_format mp4 -strftime 1 -reset_timestamps 1 /home/rrr/video-out/2025_12_09/cam1-front/cam1-front_%H_%M_%S.mp4

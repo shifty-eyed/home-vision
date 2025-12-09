@@ -1,4 +1,0 @@
-2. implement recording modes: on motion detection on avg intensity more than threshold
-
- Imgproc.cvtColor(frame, frameGrayscale, Imgproc.COLOR_BGR2GRAY);
- double averageIntensity = Core.mean(frameGrayscale).val[0];
