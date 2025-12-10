@@ -9,6 +9,7 @@ from queue import Empty, Full, Queue
 from typing import Any
 
 import numpy as np
+from concurrent_collections import ConcurrentDictionary
 
 from app.config import CameraConfig, Config
 
@@ -29,11 +30,10 @@ class ProcessWrapper:
 class StreamProcessor:
     def __init__(self, config: Config):
         self.config = config
-        self.cameras: dict[str, ProcessWrapper] = {}
+        self.cameras: ConcurrentDictionary[str, ProcessWrapper] = ConcurrentDictionary()
         self.frame_queue: Queue[tuple[str, np.ndarray]] = Queue(maxsize=100)
         self.stop_event = threading.Event()
         self.processing_thread: threading.Thread | None = None
-        self._lock = threading.Lock()
 
     def start_all(self) -> None:
         self.processing_thread = threading.Thread(
@@ -102,8 +102,7 @@ class StreamProcessor:
 
         cam_process = ProcessWrapper(cam=cam, process=process)
 
-        with self._lock:
-            self.cameras[cam.id] = cam_process
+        self.cameras[cam.id] = cam_process
 
         if enable_detection:
             cam_process.reader_thread = threading.Thread(
@@ -141,10 +140,9 @@ class StreamProcessor:
 
             frame = np.frombuffer(raw_frame, dtype=np.uint8).reshape((480, 640, 3))
 
-            with self._lock:
-                if cam.id in self.cameras:
-                    self.cameras[cam.id].frame_count += 1
-                    self.cameras[cam.id].last_frame = frame
+            if cam.id in self.cameras:
+                self.cameras[cam.id].frame_count += 1
+                self.cameras[cam.id].last_frame = frame
 
             # Queue frame for processing (non-blocking, drop if full)
             try:
@@ -155,8 +153,7 @@ class StreamProcessor:
         logger.info(f"Frame reader for {cam.id} exiting")
 
     def _stderr_sink(self, cam_id: str) -> None:
-        with self._lock:
-            cam_process = self.cameras.get(cam_id)
+        cam_process = self.cameras.get(cam_id)
         
         if not cam_process or not cam_process.process or cam_process.process.stderr is None:
             logger.warning(f"Camera {cam_id} process not found")
@@ -186,12 +183,11 @@ class StreamProcessor:
         logger.info("Processing thread exiting")
 
     def stop_camera(self, cam_id: str) -> None:
-        with self._lock:
-            cam_process = self.cameras.get(cam_id)
-            if not cam_process:
-                logger.warning(f"Camera {cam_id} not found")
-                return
-            del self.cameras[cam_id]
+        cam_process = self.cameras.get(cam_id)
+        if not cam_process:
+            logger.warning(f"Camera {cam_id} not found")
+            return
+        del self.cameras[cam_id]
 
         logger.info(f"Stopping camera {cam_id}")
 
@@ -230,8 +226,7 @@ class StreamProcessor:
         logger.info("All cameras stopped")
 
     def _restart_camera(self, cam_id: str) -> None:
-        with self._lock:
-            cam_process = self.cameras.get(cam_id)
+        cam_process = self.cameras.get(cam_id)
 
         if not cam_process:
             logger.warning(f"Cannot restart camera {cam_id}: not found")
@@ -247,9 +242,8 @@ class StreamProcessor:
                 logger.error(f"Failed to restart camera {cam_id}: {e}")
 
     def get_logs(self, cam_id: str) -> str:
-        with self._lock:
-            cam_process = self.cameras.get(cam_id)
-            if not cam_process:
-                raise KeyError(cam_id)
-            return "\n".join(cam_process.stderr_buffer)
+        cam_process = self.cameras.get(cam_id)
+        if not cam_process:
+            raise KeyError(cam_id)
+        return "\n".join(cam_process.stderr_buffer)
 
