@@ -1,8 +1,6 @@
 import logging
-import select
 import subprocess
 import threading
-import time
 from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -24,8 +22,6 @@ class ProcessWrapper:
     reader_thread: threading.Thread | None = None
     stderr_thread: threading.Thread | None = None
     stderr_buffer: deque[str] = field(default_factory=lambda: deque(maxlen=300))
-    stderr_line_buffer: str = ""  # Buffer for incomplete lines between reads
-    last_stderr_ts: float = field(default_factory=lambda: time.time())
     frame_count: int = 0
     last_frame: np.ndarray | None = field(default=None, repr=False)
 
@@ -120,7 +116,7 @@ class StreamProcessor:
 
         cam_process.stderr_thread = threading.Thread(
             target=self._stderr_monitor,
-            args=(cam.id, cam.segment_minutes * 60 + 5),
+            args=(cam.id,),
             name=f"stderr-{cam.id}",
             daemon=True,
         )
@@ -158,88 +154,21 @@ class StreamProcessor:
 
         logger.info(f"Frame reader for {cam.id} exiting")
 
-    def _stderr_monitor(self, cam_id: str, timeout_seconds: float) -> None:
-        while not self.stop_event.is_set():
-            with self._lock:
-                cam_process = self.cameras.get(cam_id)
-            if not cam_process or not cam_process.process or cam_process.process.stderr is None:
+    def _stderr_monitor(self, cam_id: str) -> None:
+        with self._lock:
+            cam_process = self.cameras.get(cam_id)
+        
+        if not cam_process or not cam_process.process or cam_process.process.stderr is None:
+            logger.warning(f"Camera {cam_id} process not found")
+            return
+
+        for line in cam_process.process.stderr:
+            if self.stop_event.is_set():
                 break
-
-            if cam_process.process.poll() is not None:
-                logger.warning(f"Camera {cam_id} process exited with code {cam_process.process.returncode}")
-                with self._lock:
-                    should_restart = cam_id in self.cameras
-
-                if should_restart:
-                    time.sleep(5)
-                    self._restart_camera(cam_id)
-                break
-
-            try:
-                ready, _, _ = select.select([cam_process.process.stderr], [], [], 1.0)
-            except ValueError:
-                break
-
-            now = time.time()
-
-            if ready:
-                # Read available data in chunks to catch \r-terminated progress lines
-                chunk = cam_process.process.stderr.read(4096)
-                if chunk == b"":
-                    # EOF - flush any remaining buffered line
-                    with self._lock:
-                        live_process = self.cameras.get(cam_id)
-                        if live_process and live_process.stderr_line_buffer.strip():
-                            live_process.stderr_buffer.append(live_process.stderr_line_buffer.strip())
-                            live_process.stderr_line_buffer = ""
-                            live_process.last_stderr_ts = now
-
-                    logger.warning(f"Camera {cam_id} stderr EOF")
-                    with self._lock:
-                        should_restart = cam_id in self.cameras
-
-                    if should_restart:
-                        time.sleep(5)
-                        self._restart_camera(cam_id)
-                    break
-
-                # Decode and combine with buffer
-                text = chunk.decode("utf-8", errors="ignore")
-                with self._lock:
-                    live_process = self.cameras.get(cam_id)
-                    if not live_process:
-                        continue
-
-                    # Combine with previous incomplete line
-                    combined = live_process.stderr_line_buffer + text
-
-                    # Split on both \r and \n (normalize \r\n to \n first)
-                    combined = combined.replace("\r\n", "\n")
-                    lines = combined.split("\n")
-
-                    # All but the last line are complete
-                    for line in lines[:-1]:
-                        line = line.strip()
-                        if line:  # Skip empty lines
-                            live_process.stderr_buffer.append(line)
-                            live_process.last_stderr_ts = now
-
-                    # Keep the last (potentially incomplete) line for next read
-                    live_process.stderr_line_buffer = lines[-1]
-                continue
-
-            with self._lock:
-                live_process = self.cameras.get(cam_id)
-                last_update = live_process.last_stderr_ts if live_process else now
-
-            if now - last_update > timeout_seconds:
-                logger.warning(
-                    f"Camera {cam_id}: stderr quiet for {int(now - last_update)}s "
-                    f"(timeout {int(timeout_seconds)}s), restarting process"
-                )
-                self._restart_camera(cam_id)
-                break
-
+            line = line.decode("utf-8", errors="ignore").strip()
+            if line:
+                cam_process.stderr_buffer.append(line)
+                
     def _processing_loop(self) -> None:
         logger.info("Processing thread started")
 

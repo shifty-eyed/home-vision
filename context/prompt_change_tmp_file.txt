@@ -1,0 +1,3 @@
+I am thinking of changing @app/stream_processor.py logic to make the ffmpeg to always write current stream to the file in tmp directory with known file name 
+suffexed with date time. and when segment finished and ffmped start to write to new file the watching thread detects it and moved the finished file to target directory.  
+can writing to the same dir harm SSD hard drive ? if not lt's plan the change
