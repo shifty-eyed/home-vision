@@ -2,15 +2,15 @@
 
 import argparse
 import logging
-import signal
 import sys
-import time
 from pathlib import Path
+
+import uvicorn
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import PlainTextResponse
 
 from app.config import Config
 from app.stream_processor import StreamProcessor
-
-processor: StreamProcessor | None = None
 
 def setup_logging(log_file: Path | None = None) -> None:
     """Setup logging to both file and console."""
@@ -27,18 +27,7 @@ def setup_logging(log_file: Path | None = None) -> None:
     )
 
 
-def signal_handler(signum: int, frame) -> None:
-    """Handle shutdown signals gracefully."""
-    sig_name = signal.Signals(signum).name
-    logging.info(f"Received {sig_name}, shutting down...")
-    if processor:
-        processor.stop_all()
-    sys.exit(0)
-
-
 def main() -> None:
-    global processor
-
     parser = argparse.ArgumentParser(description="Home video capture service")
     parser.add_argument(
         "-c", "--config", type=Path, default=Path("config/config.json"), help="Path to config file"
@@ -46,6 +35,8 @@ def main() -> None:
     parser.add_argument(
         "-l", "--log-file", type=Path, default=None, help="Path to log file"
     )
+    parser.add_argument("--host", type=str, default="0.0.0.0", help="API host")
+    parser.add_argument("--port", type=int, default=8000, help="API port")
     args = parser.parse_args()
 
     setup_logging(args.log_file)
@@ -61,40 +52,40 @@ def main() -> None:
             logger.warning("No cameras enabled, exiting")
             return
 
-        processor = StreamProcessor(config)
-
-        signal.signal(signal.SIGINT, signal_handler)
-        signal.signal(signal.SIGTERM, signal_handler)
-
-        logger.info("Starting camera processor...")
-        processor.start_all()
-
-        logger.info("Entering main loop (Ctrl+C to stop)")
-        while True:
-            time.sleep(60)
-            status = processor.get_status()
-            logger.info(
-                f"Status: {status['active_cameras']} cameras, "
-                f"queue size: {status['queue_size']}"
-            )
-            for cam_id, cam_status in status["cameras"].items():
-                logger.info(
-                    f"  {cam_id}: frames={cam_status['frames_processed']}, "
-                    f"process={cam_status['process_alive']}, "
-                    f"reader={cam_status['reader_alive']}"
-                )
+        app = create_app(config)
+        uvicorn.run(app, host=args.host, port=args.port, log_level="info")
 
     except FileNotFoundError as e:
         logger.error(f"Configuration error: {e}")
         sys.exit(1)
-    except KeyboardInterrupt:
-        logger.info("Interrupted")
     except Exception as e:
         logger.exception(f"Unexpected error: {e}")
         sys.exit(1)
-    finally:
-        if processor:
-            processor.stop_all()
+
+
+def create_app(config: Config) -> FastAPI:
+    app = FastAPI(title="home-video")
+    processor = StreamProcessor(config)
+    app.state.processor = processor
+
+    @app.on_event("startup")
+    async def startup_event() -> None:
+        logging.getLogger(__name__).info("Starting camera processor...")
+        processor.start_all()
+
+    @app.on_event("shutdown")
+    async def shutdown_event() -> None:
+        processor.stop_all()
+
+    @app.get("/logs/{camera_id}", response_class=PlainTextResponse)
+    async def get_logs(camera_id: str) -> PlainTextResponse:
+        try:
+            logs = processor.get_logs(camera_id)
+        except KeyError:
+            raise HTTPException(status_code=404, detail=f"Camera {camera_id} not found")
+        return PlainTextResponse(content=logs or "", media_type="text/plain")
+
+    return app
 
 
 if __name__ == "__main__":

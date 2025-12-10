@@ -1,0 +1,17 @@
+{
+    "configurations": [
+        {
+            "name": "Debug home-vision",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "main",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}"
+            },
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "python": "${workspaceFolder}/.venv/bin/python"
+        }
+    ]
+}

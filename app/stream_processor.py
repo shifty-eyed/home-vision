@@ -1,6 +1,9 @@
 import logging
+import select
 import subprocess
 import threading
+import time
+from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -16,9 +19,13 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class ProcessWrapper:
-    cam_id: str
+    cam_config: CameraConfig
     process: subprocess.Popen | None = None
     reader_thread: threading.Thread | None = None
+    stderr_thread: threading.Thread | None = None
+    stderr_buffer: deque[str] = field(default_factory=lambda: deque(maxlen=300))
+    stderr_line_buffer: str = ""  # Buffer for incomplete lines between reads
+    last_stderr_ts: float = field(default_factory=lambda: time.time())
     frame_count: int = 0
     last_frame: np.ndarray | None = field(default=None, repr=False)
 
@@ -97,19 +104,27 @@ class StreamProcessor:
             bufsize=10**8,
         )
 
-        cam_process = ProcessWrapper(cam_id=cam.id, process=process)
+        cam_process = ProcessWrapper(cam_config=cam, process=process)
+
+        with self._lock:
+            self.cameras[cam.id] = cam_process
 
         if enable_detection:
             cam_process.reader_thread = threading.Thread(
                 target=self._frame_reader,
-                args=(cam.id, process),
+                args=(cam, process),
                 name=f"reader-{cam.id}",
                 daemon=True,
             )
             cam_process.reader_thread.start()
 
-        with self._lock:
-            self.cameras[cam.id] = cam_process
+        cam_process.stderr_thread = threading.Thread(
+            target=self._stderr_monitor,
+            args=(cam.id, cam.segment_minutes * 60 + 5),
+            name=f"stderr-{cam.id}",
+            daemon=True,
+        )
+        cam_process.stderr_thread.start()
 
         logger.info(f"Camera {cam.id} started successfully")
 
@@ -143,6 +158,88 @@ class StreamProcessor:
 
         logger.info(f"Frame reader for {cam.id} exiting")
 
+    def _stderr_monitor(self, cam_id: str, timeout_seconds: float) -> None:
+        while not self.stop_event.is_set():
+            with self._lock:
+                cam_process = self.cameras.get(cam_id)
+            if not cam_process or not cam_process.process or cam_process.process.stderr is None:
+                break
+
+            if cam_process.process.poll() is not None:
+                logger.warning(f"Camera {cam_id} process exited with code {cam_process.process.returncode}")
+                with self._lock:
+                    should_restart = cam_id in self.cameras
+
+                if should_restart:
+                    time.sleep(5)
+                    self._restart_camera(cam_id)
+                break
+
+            try:
+                ready, _, _ = select.select([cam_process.process.stderr], [], [], 1.0)
+            except ValueError:
+                break
+
+            now = time.time()
+
+            if ready:
+                # Read available data in chunks to catch \r-terminated progress lines
+                chunk = cam_process.process.stderr.read(4096)
+                if chunk == b"":
+                    # EOF - flush any remaining buffered line
+                    with self._lock:
+                        live_process = self.cameras.get(cam_id)
+                        if live_process and live_process.stderr_line_buffer.strip():
+                            live_process.stderr_buffer.append(live_process.stderr_line_buffer.strip())
+                            live_process.stderr_line_buffer = ""
+                            live_process.last_stderr_ts = now
+
+                    logger.warning(f"Camera {cam_id} stderr EOF")
+                    with self._lock:
+                        should_restart = cam_id in self.cameras
+
+                    if should_restart:
+                        time.sleep(5)
+                        self._restart_camera(cam_id)
+                    break
+
+                # Decode and combine with buffer
+                text = chunk.decode("utf-8", errors="ignore")
+                with self._lock:
+                    live_process = self.cameras.get(cam_id)
+                    if not live_process:
+                        continue
+
+                    # Combine with previous incomplete line
+                    combined = live_process.stderr_line_buffer + text
+
+                    # Split on both \r and \n (normalize \r\n to \n first)
+                    combined = combined.replace("\r\n", "\n")
+                    lines = combined.split("\n")
+
+                    # All but the last line are complete
+                    for line in lines[:-1]:
+                        line = line.strip()
+                        if line:  # Skip empty lines
+                            live_process.stderr_buffer.append(line)
+                            live_process.last_stderr_ts = now
+
+                    # Keep the last (potentially incomplete) line for next read
+                    live_process.stderr_line_buffer = lines[-1]
+                continue
+
+            with self._lock:
+                live_process = self.cameras.get(cam_id)
+                last_update = live_process.last_stderr_ts if live_process else now
+
+            if now - last_update > timeout_seconds:
+                logger.warning(
+                    f"Camera {cam_id}: stderr quiet for {int(now - last_update)}s "
+                    f"(timeout {int(timeout_seconds)}s), restarting process"
+                )
+                self._restart_camera(cam_id)
+                break
+
     def _processing_loop(self) -> None:
         logger.info("Processing thread started")
 
@@ -165,6 +262,7 @@ class StreamProcessor:
             if not cam_process:
                 logger.warning(f"Camera {cam_id} not found")
                 return
+            del self.cameras[cam_id]
 
         logger.info(f"Stopping camera {cam_id}")
 
@@ -180,10 +278,12 @@ class StreamProcessor:
 
         # Wait for reader thread
         if cam_process.reader_thread and cam_process.reader_thread.is_alive():
-            cam_process.reader_thread.join(timeout=2)
+            if threading.current_thread() is not cam_process.reader_thread:
+                cam_process.reader_thread.join(timeout=2)
 
-        with self._lock:
-            del self.cameras[cam_id]
+        if cam_process.stderr_thread and cam_process.stderr_thread.is_alive():
+            if threading.current_thread() is not cam_process.stderr_thread:
+                cam_process.stderr_thread.join(timeout=2)
 
         logger.info(f"Camera {cam_id} stopped")
 
@@ -201,6 +301,23 @@ class StreamProcessor:
 
         logger.info("All cameras stopped")
 
+    def _restart_camera(self, cam_id: str) -> None:
+        with self._lock:
+            cam_process = self.cameras.get(cam_id)
+
+        if not cam_process:
+            logger.warning(f"Cannot restart camera {cam_id}: not found")
+            return
+
+        cam_config = cam_process.cam_config
+        self.stop_camera(cam_id)
+
+        if not self.stop_event.is_set():
+            try:
+                self.start_camera(cam_config)
+            except Exception as e:
+                logger.error(f"Failed to restart camera {cam_id}: {e}")
+
     def get_status(self) -> dict[str, Any]:
         """Get current status of all cameras."""
         with self._lock:
@@ -208,7 +325,7 @@ class StreamProcessor:
             for cam_id, cam_process in self.cameras.items():
                 process_alive = cam_process.process is not None and cam_process.process.poll() is None
                 camera_status[cam_id] = {
-                    "name": cam_process.cam_id,
+                    "name": cam_process.cam_config.name,
                     "frames_processed": cam_process.frame_count,
                     "process_alive": process_alive,
                     "reader_alive": cam_process.reader_thread is not None and cam_process.reader_thread.is_alive(),
@@ -219,4 +336,11 @@ class StreamProcessor:
                 "queue_size": self.frame_queue.qsize(),
                 "cameras": camera_status,
             }
+
+    def get_logs(self, cam_id: str) -> str:
+        with self._lock:
+            cam_process = self.cameras.get(cam_id)
+            if not cam_process:
+                raise KeyError(cam_id)
+            return "\n".join(cam_process.stderr_buffer)
 
