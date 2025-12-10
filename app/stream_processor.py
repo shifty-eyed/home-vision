@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class ProcessWrapper:
-    cam_config: CameraConfig
+    cam: CameraConfig
     process: subprocess.Popen | None = None
     reader_thread: threading.Thread | None = None
     stderr_thread: threading.Thread | None = None
@@ -41,11 +41,11 @@ class StreamProcessor:
         )
         self.processing_thread.start()
 
-        for cam_config in self.config.cameras:
+        for cam in self.config.cameras:
             try:
-                self.start_camera(cam_config)
+                self.start_camera(cam)
             except Exception as e:
-                logger.error(f"Failed to start camera {cam_config.name}: {e}")
+                logger.error(f"Failed to start camera {cam.name}: {e}")
 
     def start_camera(self, cam: CameraConfig) -> None:
         """Start recording and frame extraction for a single camera."""
@@ -100,7 +100,7 @@ class StreamProcessor:
             bufsize=10**8,
         )
 
-        cam_process = ProcessWrapper(cam_config=cam, process=process)
+        cam_process = ProcessWrapper(cam=cam, process=process)
 
         with self._lock:
             self.cameras[cam.id] = cam_process
@@ -115,7 +115,7 @@ class StreamProcessor:
             cam_process.reader_thread.start()
 
         cam_process.stderr_thread = threading.Thread(
-            target=self._stderr_monitor,
+            target=self._stderr_sink,
             args=(cam.id,),
             name=f"stderr-{cam.id}",
             daemon=True,
@@ -154,7 +154,7 @@ class StreamProcessor:
 
         logger.info(f"Frame reader for {cam.id} exiting")
 
-    def _stderr_monitor(self, cam_id: str) -> None:
+    def _stderr_sink(self, cam_id: str) -> None:
         with self._lock:
             cam_process = self.cameras.get(cam_id)
         
@@ -166,9 +166,9 @@ class StreamProcessor:
             if self.stop_event.is_set():
                 break
             line = line.decode("utf-8", errors="ignore").strip()
-            if line:
+            if line and not "size=" in line and not "time=" in line and not "bitrate=" in line:
                 cam_process.stderr_buffer.append(line)
-                
+
     def _processing_loop(self) -> None:
         logger.info("Processing thread started")
 
@@ -217,7 +217,6 @@ class StreamProcessor:
         logger.info(f"Camera {cam_id} stopped")
 
     def stop_all(self) -> None:
-        """Stop all cameras and the processing thread."""
         logger.info("Stopping all cameras...")
         self.stop_event.set()
 
@@ -238,7 +237,7 @@ class StreamProcessor:
             logger.warning(f"Cannot restart camera {cam_id}: not found")
             return
 
-        cam_config = cam_process.cam_config
+        cam_config = cam_process.cam
         self.stop_camera(cam_id)
 
         if not self.stop_event.is_set():
@@ -246,25 +245,6 @@ class StreamProcessor:
                 self.start_camera(cam_config)
             except Exception as e:
                 logger.error(f"Failed to restart camera {cam_id}: {e}")
-
-    def get_status(self) -> dict[str, Any]:
-        """Get current status of all cameras."""
-        with self._lock:
-            camera_status = {}
-            for cam_id, cam_process in self.cameras.items():
-                process_alive = cam_process.process is not None and cam_process.process.poll() is None
-                camera_status[cam_id] = {
-                    "name": cam_process.cam_config.name,
-                    "frames_processed": cam_process.frame_count,
-                    "process_alive": process_alive,
-                    "reader_alive": cam_process.reader_thread is not None and cam_process.reader_thread.is_alive(),
-                }
-
-            return {
-                "active_cameras": len(self.cameras),
-                "queue_size": self.frame_queue.qsize(),
-                "cameras": camera_status,
-            }
 
     def get_logs(self, cam_id: str) -> str:
         with self._lock:
