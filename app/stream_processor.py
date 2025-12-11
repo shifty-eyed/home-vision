@@ -1,3 +1,4 @@
+import io
 import logging
 import re
 import subprocess
@@ -170,10 +171,12 @@ class StreamProcessor:
 
         segment_pattern = re.compile(r"\[segment @ [^\]]+\] Opening '([^']+)' for writing")
 
-        for line in cam_process.process.stderr:
+        stderr_lines = io.TextIOWrapper(cam_process.process.stderr, encoding='utf-8', errors='ignore', line_buffering=True)
+
+        for line in stderr_lines:
             if self.stop_event.is_set():
                 break
-            line = line.decode("utf-8", errors="ignore").strip()
+            line = line.strip()
             if line and not "size=" in line and not "time=" in line and not "bitrate=" in line:
                 cam_process.stderr_buffer.append(line)
                 
