@@ -39,6 +39,7 @@ class StreamProcessor:
         self.stop_event = threading.Event()
         self.processing_thread: threading.Thread | None = None
         self.monitor_thread: threading.Thread | None = None
+        self.file_manager = FileManager(config)
 
     def start_all(self) -> None:
         self.processing_thread = threading.Thread(
@@ -198,7 +199,7 @@ class StreamProcessor:
     def _monitor_loop(self) -> None:
         while not self.stop_event.is_set():
             if not self.file_queue.empty():
-                FileManager.move(self.file_queue, self.config.output_dir)
+                self.file_manager.move(self.file_queue)
             self.stop_event.wait(timeout=1.0)
 
 

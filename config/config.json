@@ -8,10 +8,9 @@
       "segment_minutes": 3
     }
   ],
-  "output_dir": "/home/rrr/video-out",
-  "scratch_dir": "/tmp/home-vision-scratch",
+  "output_dir": "/home/rrr/video-out/target",
+  "scratch_dir": "/home/rrr/video-out",
   "limitOccupiedSpace": true,
-  "maxOccupiedSpaceGB": 1,
-  "keepFreeDiskSpaceGB": 100
+  "maxOccupiedSpaceMB": 400
 }
 
