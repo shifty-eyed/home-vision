@@ -42,6 +42,7 @@ class StreamProcessor:
         self.processing_thread: threading.Thread | None = None
         self.monitor_thread: threading.Thread | None = None
         self.file_manager = FileManager(config)
+        self.file_manager.process_leftover_files()
 
     def start_all(self) -> None:
         self.processing_thread = threading.Thread(

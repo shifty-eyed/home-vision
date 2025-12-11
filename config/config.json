@@ -17,6 +17,6 @@
   ],
   "output_dir": "/home/rrr/video-out/target",
   "scratch_dir": "/home/rrr/video-out",
-  "max_occupied_space_mb": 400
+  "max_occupied_space_mb": 100
 }
 

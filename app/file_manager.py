@@ -11,9 +11,45 @@ logger = logging.getLogger(__name__)
 
 
 class FileManager:
+    # Pattern: cam_id_YYYY_MM_DD_HH_MM_SS.mp4
+    FILENAME_PATTERN = re.compile(r"^([^_]+)_(\d{4})_(\d{2})_(\d{2})_(\d{2})_(\d{2})_(\d{2})\.mp4$")
     
     def __init__(self, config: Config):
         self._config = config
+    
+    def process_leftover_files(self) -> None:
+        scratch_dir = self._config.scratch_dir
+        
+        if not scratch_dir.exists():
+            logger.info(f"Scratch directory does not exist: {scratch_dir}")
+            return
+        
+        camera_ids = [cam.id for cam in self._config.cameras]
+        
+        # Create a temporary queue with leftover files
+        temp_queue: Queue[str] = Queue()
+        file_count = 0
+        
+        try:
+            for file_path in scratch_dir.glob("*.mp4"):
+                if file_path.is_file():
+                    match = self.FILENAME_PATTERN.match(file_path.name)
+                    if match:
+                        cam_id = match.group(1)
+                        # Only process files for configured cameras
+                        if cam_id in camera_ids:
+                            temp_queue.put(str(file_path))
+                            file_count += 1
+                            logger.info(f"Found leftover file: {file_path.name}")
+        except Exception as e:
+            logger.error(f"Error scanning scratch directory: {e}", exc_info=True)
+            return
+        
+        if file_count == 0:
+            return
+        
+        logger.info(f"Processing {file_count} leftover file(s)")
+        self.move(temp_queue)
     
     def move(self, file_queue: Queue[str]) -> None:
         output_dir = self._config.output_dir
@@ -30,9 +66,7 @@ class FileManager:
             try:
                 file_path = Path(file_path_str)
                 filename = file_path.name
-                # Pattern: cam_id_YYYY_MM_DD_HH_MM_SS.mp4
-                pattern = re.compile(r"^([^_]+)_(\d{4})_(\d{2})_(\d{2})_(\d{2})_(\d{2})_(\d{2})\.mp4$")
-                match = pattern.match(filename)
+                match = self.FILENAME_PATTERN.match(filename)
                 
                 if not match:
                     logger.error(f"Could not parse filename pattern: {filename}")
@@ -70,10 +104,6 @@ class FileManager:
         if current_size <= max_size_bytes:
             return
         
-        logger.info(
-            f"Output directory size ({current_size / (1024 * 1024):.2f} MB) exceeds limit ({max_size_mb} MB). Removing older files..."
-        )
-        
         all_files = self._get_files_sorted_by_age(output_dir)
         removed_count = 0
         for file_path in all_files:
@@ -90,10 +120,7 @@ class FileManager:
                 logger.error(f"Error removing file {file_path}: {e}", exc_info=True)
         
         self._cleanup_empty_dirs(output_dir)
-        
-        logger.info(
-            f"Removed {removed_count} files. Current size: {current_size / (1024 * 1024):.2f} MB"
-        )
+
     
     def _get_dir_size(self, directory: Path) -> int:
         total_size = 0
