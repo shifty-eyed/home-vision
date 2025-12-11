@@ -2,6 +2,7 @@ import logging
 import re
 import subprocess
 import threading
+import time
 from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -122,7 +123,7 @@ class StreamProcessor:
             cam_process.reader_thread.start()
 
         cam_process.stderr_thread = threading.Thread(
-            target=self._stderr_sink,
+            target=self._stderr_reader,
             args=(cam.id,),
             name=f"stderr-{cam.id}",
             daemon=True,
@@ -160,7 +161,7 @@ class StreamProcessor:
 
         logger.info(f"Frame reader for {cam.id} exiting")
 
-    def _stderr_sink(self, cam_id: str) -> None:
+    def _stderr_reader(self, cam_id: str) -> None:
         cam_process = self.cameras.get(cam_id)
         
         if not cam_process or not cam_process.process or cam_process.process.stderr is None:
@@ -194,6 +195,7 @@ class StreamProcessor:
                 # Future: run OpenCV detection algorithm here
                 logger.debug(f"Processing frame from {cam_name}, shape: {frame.shape}")
             except Empty:
+                time.sleep(0.1)
                 continue
 
     def _monitor_loop(self) -> None:

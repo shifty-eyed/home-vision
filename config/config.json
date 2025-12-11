@@ -3,14 +3,20 @@
     {
       "id": "cam1-front",
       "url": "rtsp://192.168.4.156:554/stream0",
-      "enabled": true,
+      "enabled": false,
       "detection_interval": 0,
       "segment_minutes": 3
+    },
+    {
+      "id": "cam2",
+      "url": "rtsp://192.168.4.198:554/stream0",
+      "enabled": true,
+      "detection_interval": 0,
+      "segment_minutes": 2
     }
   ],
   "output_dir": "/home/rrr/video-out/target",
   "scratch_dir": "/home/rrr/video-out",
-  "limitOccupiedSpace": true,
-  "maxOccupiedSpaceMB": 400
+  "max_occupied_space_mb": 400
 }
 

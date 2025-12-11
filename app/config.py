@@ -24,9 +24,7 @@ class AppConfig(BaseModel):
     output_dir: Path
     scratch_dir: Path
     cameras: list[CameraConfig] = Field(default_factory=list)
-    limit_occupied_space: bool = Field(False, alias="limitOccupiedSpace")
-    max_occupied_space_gb: int = Field(100, alias="maxOccupiedSpaceGB")
-    keep_free_disk_space_gb: int = Field(100, alias="keepFreeDiskSpaceGB")
+    max_occupied_space_mb: int = Field(100, alias="max_occupied_space_mb")
 
 
 class Config:
@@ -67,14 +65,6 @@ class Config:
         return self._cameras
 
     @property
-    def limit_occupied_space(self) -> bool:
-        return self._config.limit_occupied_space
-
-    @property
-    def max_occupied_space_gb(self) -> int:
-        return self._config.max_occupied_space_gb
-
-    @property
-    def keep_free_disk_space_gb(self) -> int:
-        return self._config.keep_free_disk_space_gb
+    def max_occupied_space_mb(self) -> int:
+        return self._config.max_occupied_space_mb
 
