@@ -75,7 +75,7 @@ def create_app(config: Config) -> FastAPI:
 
     @app.on_event("shutdown")
     async def shutdown_event() -> None:
-        processor.stop_all()
+        processor.shutdown()
 
     @app.get("/logs/{camera_id}", response_class=PlainTextResponse)
     async def get_logs(camera_id: str) -> PlainTextResponse:

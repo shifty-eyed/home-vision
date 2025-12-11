@@ -9,6 +9,7 @@
     }
   ],
   "output_dir": "/home/rrr/video-out",
+  "scratch_dir": "/tmp/home-vision-scratch",
   "limitOccupiedSpace": true,
   "maxOccupiedSpaceGB": 1,
   "keepFreeDiskSpaceGB": 100

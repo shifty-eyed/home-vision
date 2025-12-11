@@ -1,4 +1,5 @@
 import logging
+import re
 import subprocess
 import threading
 from collections import deque
@@ -12,6 +13,7 @@ import numpy as np
 from concurrent_collections import ConcurrentDictionary
 
 from app.config import CameraConfig, Config
+from app.file_manager import FileManager
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +27,7 @@ class ProcessWrapper:
     stderr_buffer: deque[str] = field(default_factory=lambda: deque(maxlen=300))
     frame_count: int = 0
     last_frame: np.ndarray | None = field(default=None, repr=False)
+    current_file: str | None = None
 
 
 class StreamProcessor:
@@ -32,14 +35,21 @@ class StreamProcessor:
         self.config = config
         self.cameras: ConcurrentDictionary[str, ProcessWrapper] = ConcurrentDictionary()
         self.frame_queue: Queue[tuple[str, np.ndarray]] = Queue(maxsize=100)
+        self.file_queue: Queue[str] = Queue()
         self.stop_event = threading.Event()
         self.processing_thread: threading.Thread | None = None
+        self.monitor_thread: threading.Thread | None = None
 
     def start_all(self) -> None:
         self.processing_thread = threading.Thread(
             target=self._processing_loop, name="frame-processor", daemon=True
         )
         self.processing_thread.start()
+
+        self.monitor_thread = threading.Thread(
+            target=self._monitor_loop, name="file-monitor", daemon=True
+        )
+        self.monitor_thread.start()
 
         for cam in self.config.cameras:
             try:
@@ -49,14 +59,11 @@ class StreamProcessor:
 
     def start_camera(self, cam: CameraConfig) -> None:
         """Start recording and frame extraction for a single camera."""
-        # Create output directory structure: {output_dir}/{year}/{month}/{day}/{camera}/
-        now = datetime.now()
-        output_base = self.config.output_dir / f"{now.year}_{now.month:02d}_{now.day:02d}" / cam.id
-        output_base.mkdir(parents=True, exist_ok=True)
-        logger.info(f"Created output directory for {cam.id}: {output_base}")
+        # Create scratch directory if it doesn't exist
+        self.config.scratch_dir.mkdir(parents=True, exist_ok=True)
+        logger.info(f"Using scratch directory: {self.config.scratch_dir}")
 
-        # Output file pattern for segment rotation
-        output_pattern = str(output_base / f"{cam.id}_%H_%M_%S.mp4")
+        output_pattern = str(self.config.scratch_dir / f"{cam.id}_%Y_%m_%d_%H_%M_%S.mp4")
 
         # Build FFmpeg command that:
         # 1. Copies H.265 video to segmented files (audio disabled)
@@ -106,7 +113,7 @@ class StreamProcessor:
 
         if enable_detection:
             cam_process.reader_thread = threading.Thread(
-                target=self._frame_reader,
+                target=self._frame_detection_reader,
                 args=(cam, process),
                 name=f"reader-{cam.id}",
                 daemon=True,
@@ -123,7 +130,7 @@ class StreamProcessor:
 
         logger.info(f"Camera {cam.id} started successfully")
 
-    def _frame_reader(self, cam: CameraConfig, process: subprocess.Popen) -> None:
+    def _frame_detection_reader(self, cam: CameraConfig, process: subprocess.Popen) -> None:
         frame_size = 640 * 480 * 3  # RGB24
 
         while not self.stop_event.is_set():
@@ -159,16 +166,26 @@ class StreamProcessor:
             logger.warning(f"Camera {cam_id} process not found")
             return
 
+        segment_pattern = re.compile(r"\[segment @ [^\]]+\] Opening '([^']+)' for writing")
+
         for line in cam_process.process.stderr:
             if self.stop_event.is_set():
                 break
             line = line.decode("utf-8", errors="ignore").strip()
             if line and not "size=" in line and not "time=" in line and not "bitrate=" in line:
                 cam_process.stderr_buffer.append(line)
+                
+                match = segment_pattern.search(line)
+                if match:
+                    new_file = match.group(1)
+
+                    if cam_process.current_file is not None and cam_process.current_file != new_file:
+                        self.file_queue.put(cam_process.current_file, timeout=0.1)
+
+                    cam_process.current_file = new_file
+                    logger.info(f"Camera {cam_id}: New segment file: {new_file}")
 
     def _processing_loop(self) -> None:
-        logger.info("Processing thread started")
-
         while not self.stop_event.is_set():
             try:
                 cam_name, frame = self.frame_queue.get(timeout=1.0)
@@ -177,19 +194,22 @@ class StreamProcessor:
                 logger.debug(f"Processing frame from {cam_name}, shape: {frame.shape}")
             except Empty:
                 continue
-            except Exception as e:
-                logger.error(f"Error processing frame: {e}")
 
-        logger.info("Processing thread exiting")
+    def _monitor_loop(self) -> None:
+        while not self.stop_event.is_set():
+            if not self.file_queue.empty():
+                FileManager.move(self.file_queue, self.config.output_dir)
+            self.stop_event.wait(timeout=1.0)
+
 
     def stop_camera(self, cam_id: str) -> None:
         cam_process = self.cameras.get(cam_id)
         if not cam_process:
-            logger.warning(f"Camera {cam_id} not found")
             return
-        del self.cameras[cam_id]
 
         logger.info(f"Stopping camera {cam_id}")
+
+        del self.cameras[cam_id]
 
         # Terminate process
         if cam_process.process and cam_process.process.poll() is None:
@@ -201,7 +221,6 @@ class StreamProcessor:
                 cam_process.process.kill()
                 cam_process.process.wait()
 
-        # Wait for reader thread
         if cam_process.reader_thread and cam_process.reader_thread.is_alive():
             if threading.current_thread() is not cam_process.reader_thread:
                 cam_process.reader_thread.join(timeout=2)
@@ -212,34 +231,21 @@ class StreamProcessor:
 
         logger.info(f"Camera {cam_id} stopped")
 
-    def stop_all(self) -> None:
+    def shutdown(self) -> None:
         logger.info("Stopping all cameras...")
         self.stop_event.set()
 
         for cam_id in list(self.cameras.keys()):
             self.stop_camera(cam_id)
 
-        # Wait for processing thread
         if self.processing_thread and self.processing_thread.is_alive():
             self.processing_thread.join(timeout=5)
 
+        if self.monitor_thread and self.monitor_thread.is_alive():
+            self.monitor_thread.join(timeout=5)
+
         logger.info("All cameras stopped")
 
-    def _restart_camera(self, cam_id: str) -> None:
-        cam_process = self.cameras.get(cam_id)
-
-        if not cam_process:
-            logger.warning(f"Cannot restart camera {cam_id}: not found")
-            return
-
-        cam_config = cam_process.cam
-        self.stop_camera(cam_id)
-
-        if not self.stop_event.is_set():
-            try:
-                self.start_camera(cam_config)
-            except Exception as e:
-                logger.error(f"Failed to restart camera {cam_id}: {e}")
 
     def get_logs(self, cam_id: str) -> str:
         cam_process = self.cameras.get(cam_id)

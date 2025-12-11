@@ -22,6 +22,7 @@ class AppConfig(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
     output_dir: Path
+    scratch_dir: Path
     cameras: list[CameraConfig] = Field(default_factory=list)
     limit_occupied_space: bool = Field(False, alias="limitOccupiedSpace")
     max_occupied_space_gb: int = Field(100, alias="maxOccupiedSpaceGB")
@@ -56,6 +57,10 @@ class Config:
     @property
     def output_dir(self) -> Path:
         return self._config.output_dir
+
+    @property
+    def scratch_dir(self) -> Path:
+        return self._config.scratch_dir
 
     @property
     def cameras(self) -> list[CameraConfig]:

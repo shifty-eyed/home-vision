@@ -1,3 +1,17 @@
-I am thinking of changing @app/stream_processor.py logic to make the ffmpeg to always write current stream to the file in tmp directory with known file name 
-suffexed with date time. and when segment finished and ffmped start to write to new file the watching thread detects it and moved the finished file to target directory.  
-can writing to the same dir harm SSD hard drive ? if not lt's plan the change
+I am thinking of changing @app/stream_processor.py logic to make the ffmpeg to always write current stream to the file in tmp directory with file name 
+suffexed with date time. and when a segment finished and ffmped start to write to new file and logs that in stderr, 
+the stderr watching thread detects it and adds to the queue of files to move.
+
+1. let's make a new thread in StreamProcessor class called monitor, similar to _processing_loop.
+add file_queue[str] to the StreamProcessor.
+monitor loop will just check in the loop if file queue is not empty - it runs the FileManager.move
+
+2. add to config the scratch dir and use it as output dir for ffmpeg output
+
+3. in std err detect lines like 
+[segment @ 0x56dcc8473c40] Opening '/home/rrr/video-out/2025_12_10/cam1-front/cam1-front_14_30_45.mp4' for writing
+parse file name and add the a specific queue, each process wrapper should have property - currrent file. 
+when current file changes the previous file get's sent to file_queue
+
+4. make new class in separate py file a FileManager and there we place a move logic. it will have method Move. accepting the queue
+checks the queue and move the file to target folder, creating subfolders if needed.
