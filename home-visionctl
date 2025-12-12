@@ -1,0 +1,149 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  cat <<'EOF'
+Usage: home-visionctl <command>
+
+Commands:
+  start     Start home-vision as a background daemon (writes PID file)
+  stop      Stop the daemon by PID
+  status    Show whether the daemon is running
+  restart   Stop, git pull, then start
+EOF
+}
+
+ROOT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+
+LOG_FILE="${ROOT_DIR}/logs/home-vision.log"
+PID_FILE="${ROOT_DIR}/home-vision.pid"
+
+ensure_dirs() {
+  mkdir -p -- "$(dirname -- "${LOG_FILE}")"
+}
+
+is_running_pid() {
+  local pid="$1"
+  if [[ -z "${pid}" ]]; then
+    return 1
+  fi
+  if kill -0 "${pid}" 2>/dev/null; then
+    return 0
+  fi
+  return 1
+}
+
+read_pid() {
+  if [[ -f "${PID_FILE}" ]]; then
+    tr -d '[:space:]' <"${PID_FILE}" || true
+  else
+    printf '%s' ""
+  fi
+}
+
+cmd_start() {
+  ensure_dirs
+
+  local pid
+  pid="$(read_pid)"
+  if [[ -n "${pid}" ]] && is_running_pid "${pid}"; then
+    echo "home-vision is already running (pid=${pid})"
+    return 0
+  fi
+
+  if [[ -f "${PID_FILE}" ]] && [[ -n "${pid}" ]]; then
+    echo "Removing stale pid file (pid=${pid})"
+    rm -f -- "${PID_FILE}"
+  fi
+
+  local runner
+  if command -v uv >/dev/null 2>&1; then
+    runner=(uv run)
+  else
+    runner=(python)
+  fi
+
+  nohup "${runner[@]}" "${ROOT_DIR}/main.py" \
+    --log-file "${LOG_FILE}" \
+    >/dev/null 2>&1 &
+
+  local new_pid="$!"
+  echo "${new_pid}" >"${PID_FILE}"
+  echo "home-vision started (pid=${new_pid})"
+}
+
+cmd_status() {
+  local pid
+  pid="$(read_pid)"
+
+  if [[ -z "${pid}" ]]; then
+    echo "home-vision is not running (no pid file)"
+    return 1
+  fi
+
+  if is_running_pid "${pid}"; then
+    echo "home-vision is running (pid=${pid})"
+    return 0
+  fi
+
+  echo "home-vision is not running (stale pid file pid=${pid})"
+  return 1
+}
+
+cmd_stop() {
+  local pid
+  pid="$(read_pid)"
+
+  if [[ -z "${pid}" ]]; then
+    echo "home-vision is not running (no pid file)"
+    return 0
+  fi
+
+  if ! is_running_pid "${pid}"; then
+    echo "home-vision is not running (stale pid file pid=${pid}); removing pid file"
+    rm -f -- "${PID_FILE}"
+    return 0
+  fi
+
+  echo "Stopping home-vision (pid=${pid})..."
+  kill -TERM "${pid}" 2>/dev/null || true
+
+  local i
+  for i in $(seq 1 30); do
+    if ! is_running_pid "${pid}"; then
+      rm -f -- "${PID_FILE}"
+      echo "home-vision stopped"
+      return 0
+    fi
+    sleep 1
+  done
+
+  echo "Timed out waiting for shutdown; force killing (pid=${pid})"
+  kill -KILL "${pid}" 2>/dev/null || true
+  rm -f -- "${PID_FILE}"
+  echo "home-vision stopped"
+}
+
+cmd_restart() {
+  cmd_stop
+  git -C "${ROOT_DIR}" pull --ff-only
+  cmd_start
+}
+
+main() {
+  local cmd="${1:-}"
+  case "${cmd}" in
+    start) cmd_start ;;
+    stop) cmd_stop ;;
+    status) cmd_status ;;
+    restart) cmd_restart ;;
+    -h|--help|help|"") usage; exit 2 ;;
+    *)
+      echo "Unknown command: ${cmd}" >&2
+      usage
+      exit 2
+      ;;
+  esac
+}
+
+main "$@"

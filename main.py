@@ -3,6 +3,7 @@
 import argparse
 import logging
 import sys
+from logging.handlers import TimedRotatingFileHandler
 from pathlib import Path
 
 import uvicorn
@@ -18,7 +19,16 @@ def setup_logging(log_file: Path | None = None) -> None:
 
     if log_file:
         log_file.parent.mkdir(parents=True, exist_ok=True)
-        handlers.append(logging.FileHandler(log_file))
+        file_handler = TimedRotatingFileHandler(
+            filename=log_file,
+            when="midnight",
+            interval=1,
+            backupCount=4,
+            encoding="utf-8",
+            utc=False,
+        )
+        file_handler.suffix = "%Y-%m-%d"
+        handlers.append(file_handler)
 
     logging.basicConfig(
         level=logging.INFO,
@@ -53,7 +63,7 @@ def main() -> None:
             return
 
         app = create_app(config)
-        uvicorn.run(app, host=args.host, port=args.port, log_level="info")
+        uvicorn.run(app, host=args.host, port=args.port, log_level="info", log_config=None)
 
     except FileNotFoundError as e:
         logger.error(f"Configuration error: {e}")
