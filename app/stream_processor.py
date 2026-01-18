@@ -19,6 +19,8 @@ from app.file_manager import FileManager
 
 logger = logging.getLogger(__name__)
 
+STALL_TIMEOUT_SECONDS = 60
+
 
 @dataclass
 class ProcessWrapper:
@@ -27,6 +29,7 @@ class ProcessWrapper:
     reader_thread: threading.Thread | None = None
     stderr_thread: threading.Thread | None = None
     stderr_buffer: deque[str] = field(default_factory=lambda: deque(maxlen=300))
+    last_stderr_time: float = field(default_factory=time.time)
     frame_count: int = 0
     last_frame: np.ndarray | None = field(default=None, repr=False)
     current_file: str | None = None
@@ -41,6 +44,7 @@ class StreamProcessor:
         self.stop_event = threading.Event()
         self.processing_thread: threading.Thread | None = None
         self.monitor_thread: threading.Thread | None = None
+        self.stall_detection_thread: threading.Thread | None = None
         self.file_manager = FileManager(config)
         self.file_manager.process_leftover_files()
 
@@ -54,6 +58,11 @@ class StreamProcessor:
             target=self._monitor_loop, name="file-monitor", daemon=True
         )
         self.monitor_thread.start()
+
+        self.stall_detection_thread = threading.Thread(
+            target=self._stall_detection_loop, name="stall-detector", daemon=True
+        )
+        self.stall_detection_thread.start()
 
         for cam in self.config.cameras:
             try:
@@ -177,6 +186,7 @@ class StreamProcessor:
         for line in stderr_lines:
             if self.stop_event.is_set():
                 break
+            cam_process.last_stderr_time = time.time()
             line = line.strip()
             if line and not "size=" in line and not "time=" in line and not "bitrate=" in line:
                 cam_process.stderr_buffer.append(line)
@@ -208,6 +218,52 @@ class StreamProcessor:
                 self.file_manager.move(self.file_queue)
             self.stop_event.wait(timeout=1.0)
 
+    def _dump_stderr_to_file(self, cam_id: str, stderr_buffer: deque[str]) -> Path:
+        """Dump stderr buffer to a log file and return the file path."""
+        logs_dir = Path("logs")
+        logs_dir.mkdir(parents=True, exist_ok=True)
+        
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        log_file = logs_dir / f"ffmpeg_stall_{cam_id}_{timestamp}.log"
+        
+        with open(log_file, "w") as f:
+            f.write(f"FFmpeg stall detected for camera: {cam_id}\n")
+            f.write(f"Timestamp: {datetime.now().isoformat()}\n")
+            f.write(f"Buffer size: {len(stderr_buffer)} lines\n")
+            f.write("=" * 60 + "\n\n")
+            for line in stderr_buffer:
+                f.write(line + "\n")
+        
+        return log_file
+
+    def _stall_detection_loop(self) -> None:
+        """Monitor ffmpeg processes for stalls and restart them if needed."""
+        while not self.stop_event.is_set():
+            self.stop_event.wait(timeout=15.0)
+            if self.stop_event.is_set():
+                break
+
+            current_time = time.time()
+            for cam_id in list(self.cameras.keys()):
+                cam_process = self.cameras.get(cam_id)
+                if not cam_process:
+                    continue
+
+                time_since_last_stderr = current_time - cam_process.last_stderr_time
+                if time_since_last_stderr > STALL_TIMEOUT_SECONDS:
+                    logger.warning(
+                        f"Camera {cam_id}: ffmpeg stall detected "
+                        f"(no stderr for {time_since_last_stderr:.1f}s)"
+                    )
+
+                    log_file = self._dump_stderr_to_file(cam_id, cam_process.stderr_buffer)
+                    cam_config = cam_process.cam
+                    self.stop_camera(cam_id)
+                    try:
+                        logger.info(f"Camera {cam_id}: restarting after stall")
+                        self.start_camera(cam_config)
+                    except Exception as e:
+                        logger.error(f"Camera {cam_id}: failed to restart after stall: {e}")
 
     def stop_camera(self, cam_id: str) -> None:
         cam_process = self.cameras.get(cam_id)
@@ -250,6 +306,9 @@ class StreamProcessor:
 
         if self.monitor_thread and self.monitor_thread.is_alive():
             self.monitor_thread.join(timeout=5)
+
+        if self.stall_detection_thread and self.stall_detection_thread.is_alive():
+            self.stall_detection_thread.join(timeout=5)
 
         logger.info("All cameras stopped")
 
