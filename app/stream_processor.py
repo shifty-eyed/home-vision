@@ -259,6 +259,7 @@ class StreamProcessor:
                     log_file = self._dump_stderr_to_file(cam_id, cam_process.stderr_buffer)
                     cam_config = cam_process.cam
                     self.stop_camera(cam_id)
+                    self.file_manager.process_leftover_files(cam_id)
                     try:
                         logger.info(f"Camera {cam_id}: restarting after stall")
                         self.start_camera(cam_config)

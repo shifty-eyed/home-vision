@@ -17,14 +17,14 @@ class FileManager:
     def __init__(self, config: Config):
         self._config = config
     
-    def process_leftover_files(self) -> None:
+    def process_leftover_files(self, cam_id: str | None = None) -> None:
         scratch_dir = self._config.scratch_dir
         
         if not scratch_dir.exists():
             logger.info(f"Scratch directory does not exist: {scratch_dir}")
             return
         
-        camera_ids = [cam.id for cam in self._config.cameras]
+        camera_ids = [cam_id] if cam_id else [cam.id for cam in self._config.cameras]
         
         # Create a temporary queue with leftover files
         temp_queue: Queue[str] = Queue()
@@ -35,9 +35,8 @@ class FileManager:
                 if file_path.is_file():
                     match = self.FILENAME_PATTERN.match(file_path.name)
                     if match:
-                        cam_id = match.group(1)
-                        # Only process files for configured cameras
-                        if cam_id in camera_ids:
+                        file_cam_id = match.group(1)
+                        if file_cam_id in camera_ids:
                             temp_queue.put(str(file_path))
                             file_count += 1
                             logger.info(f"Found leftover file: {file_path.name}")
